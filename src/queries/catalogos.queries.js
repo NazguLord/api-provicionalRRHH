@@ -28,18 +28,18 @@ const listarEstadosCiviles = async () => {
   return query(sql);
 };
 
-const listarTiposEmpleado = async () => {
+const obtenerTipoEmpleadoPorCodigo = async (empCod) => {
   const sql = `
     SELECT
-      IdTipoEmpleado,
-      NombreTipoEmpleado,
-      Activo
-    FROM TB_CatTipoEmpleado
-    WHERE Activo = 1
-    ORDER BY NombreTipoEmpleado ASC
+      EmpCod,
+      EmpTip
+    FROM \`uch-workcloud\`.empleados
+    WHERE EmpCod = ?
+    LIMIT 1
   `;
 
-  return query(sql);
+  const rows = await query(sql, [empCod]);
+  return rows[0] || null;
 };
 
 const listarIdiomas = async () => {
@@ -87,7 +87,7 @@ const listarGradosAcademicos = async () => {
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
-  listarTiposEmpleado,
+  obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos

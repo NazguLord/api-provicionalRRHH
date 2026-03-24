@@ -36,19 +36,30 @@ const listarEstadosCiviles = async (req, res) => {
   }
 };
 
-const listarTiposEmpleado = async (req, res) => {
+const obtenerTipoEmpleadoPorCodigo = async (req, res) => {
   try {
-    const tiposEmpleado = await catalogosQueries.listarTiposEmpleado();
+    const { empCod } = req.params;
+
+    const tipoEmpleado = await catalogosQueries.obtenerTipoEmpleadoPorCodigo(
+      empCod
+    );
+
+    if (!tipoEmpleado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
 
     res.json({
       ok: true,
-      message: "Tipos de empleado obtenidos correctamente",
-      data: tiposEmpleado
+      message: "Tipo de empleado obtenido correctamente",
+      data: tipoEmpleado
     });
   } catch (error) {
     res.status(500).json({
       ok: false,
-      message: "Error al obtener los tipos de empleado",
+      message: "Error al obtener el tipo de empleado",
       error: error.message
     });
   }
@@ -111,7 +122,7 @@ const listarGradosAcademicos = async (req, res) => {
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
-  listarTiposEmpleado,
+  obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos
