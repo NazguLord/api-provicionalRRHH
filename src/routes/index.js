@@ -3,6 +3,7 @@ const express = require("express");
 const { probarConexion } = require("../config/db");
 const authRoutes = require("./auth.routes");
 const catalogosRoutes = require("./catalogos.routes");
+const empleadosRoutes = require("./empleados.routes");
 const usuariosRoutes = require("./usuarios.routes");
 
 const router = express.Router();
@@ -33,6 +34,7 @@ router.get("/db-test", async (req, res) => {
 
 router.use("/auth", authRoutes);
 router.use("/catalogos", catalogosRoutes);
+router.use("/empleados", empleadosRoutes);
 router.use("/usuarios", usuariosRoutes);
 
 module.exports = router;
