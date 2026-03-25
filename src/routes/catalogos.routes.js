@@ -10,5 +10,6 @@ router.get("/tipos-empleado/:empCod", catalogosController.obtenerTipoEmpleadoPor
 router.get("/idiomas", catalogosController.listarIdiomas);
 router.get("/niveles-idioma", catalogosController.listarNivelesIdioma);
 router.get("/grados-academicos", catalogosController.listarGradosAcademicos);
+router.get("/estados-academicos", catalogosController.listarEstadosAcademicos);
 
 module.exports = router;

@@ -37,6 +37,28 @@ const storage = multer.diskStorage({
   }
 });
 
+const storageGradoAcademico = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const { empCod } = req.params;
+    const destino = path.join(
+      __dirname,
+      "..",
+      "..",
+      "data",
+      "empleados",
+      String(empCod),
+      "documentos-academicos"
+    );
+
+    fs.mkdirSync(destino, { recursive: true });
+    cb(null, destino);
+  },
+  filename: (req, file, cb) => {
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    cb(null, `grado-academico-${Date.now()}${extension}`);
+  }
+});
+
 const fileFilter = (req, file, cb) => {
   if (!MIME_TYPES_PERMITIDOS.has(file.mimetype)) {
     return cb(
@@ -55,6 +77,15 @@ const uploadEmpleadoDocumento = multer({
   }
 });
 
+const uploadGradoAcademicoAdjunto = multer({
+  storage: storageGradoAcademico,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
+});
+
 module.exports = {
-  uploadEmpleadoDocumento
+  uploadEmpleadoDocumento,
+  uploadGradoAcademicoAdjunto
 };

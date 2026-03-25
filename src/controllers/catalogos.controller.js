@@ -119,11 +119,30 @@ const listarGradosAcademicos = async (req, res) => {
   }
 };
 
+const listarEstadosAcademicos = async (req, res) => {
+  try {
+    const estadosAcademicos = await catalogosQueries.listarEstadosAcademicos();
+
+    res.json({
+      ok: true,
+      message: "Estados academicos obtenidos correctamente",
+      data: estadosAcademicos
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los estados academicos",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
-  listarGradosAcademicos
+  listarGradosAcademicos,
+  listarEstadosAcademicos
 };

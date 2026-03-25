@@ -811,11 +811,213 @@ const actualizarDocumentoEmpleado = async (empCod, tipoDocumento, archivo) => {
   return obtenerEmpleadoNuevoPorCodigo(empCod);
 };
 
+const obtenerEstadoAcademicoPorId = async (idEstadoAcademico) => {
+  if (!idEstadoAcademico) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      IdEstadoAcademico,
+      NombreEstadoAcademico
+    FROM TB_CatEstadoAcademico
+    WHERE IdEstadoAcademico = ?
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [idEstadoAcademico]);
+  return rows[0] || null;
+};
+
+const obtenerGradoAcademicoPorId = async (idGradoAcademico) => {
+  if (!idGradoAcademico) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      IdGradoAcademico,
+      NombreGradoAcademico
+    FROM TB_CatGradoAcademico
+    WHERE IdGradoAcademico = ?
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [idGradoAcademico]);
+  return rows[0] || null;
+};
+
+const listarGradosAcademicosEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      ega.IdEmpleadoGradoAcademico,
+      ega.IdEmpleado,
+      ega.IdGradoAcademico,
+      ega.IdEstadoAcademico,
+      ega.NombreGradoAcademico,
+      ega.Titulo,
+      ega.EstadoAcademico,
+      ega.AnioGraduacion,
+      ega.RutaDocumentoAdjunto,
+      ega.InstitucionEducativa,
+      ega.FechaInicio,
+      ega.FechaFin,
+      ega.Graduado,
+      ega.Activo,
+      ega.FechaCreacion,
+      ega.FechaActualizacion,
+      cga.NombreGradoAcademico AS NombreGradoCatalogo,
+      cea.NombreEstadoAcademico AS NombreEstadoCatalogo
+    FROM TB_EmpleadoGradoAcademico ega
+    LEFT JOIN TB_CatGradoAcademico cga
+      ON cga.IdGradoAcademico = ega.IdGradoAcademico
+    LEFT JOIN TB_CatEstadoAcademico cea
+      ON cea.IdEstadoAcademico = ega.IdEstadoAcademico
+    WHERE ega.IdEmpleado = ?
+      AND ega.Activo = 1
+    ORDER BY ega.IdEmpleadoGradoAcademico DESC
+  `;
+
+  return query(sql, [empleado.IdEmpleado]);
+};
+
+const crearGradoAcademicoEmpleado = async (empCod, payload = {}, archivo = null) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const idGradoAcademico =
+    payload.idGradoAcademico ?? payload.IdGradoAcademico ?? null;
+  const idEstadoAcademico =
+    payload.idEstadoAcademico ?? payload.IdEstadoAcademico ?? null;
+
+  const [gradoAcademico, estadoAcademico] = await Promise.all([
+    obtenerGradoAcademicoPorId(idGradoAcademico),
+    obtenerEstadoAcademicoPorId(idEstadoAcademico)
+  ]);
+
+  if (idGradoAcademico && !gradoAcademico) {
+    throw new Error("El grado academico seleccionado no existe");
+  }
+
+  if (idEstadoAcademico && !estadoAcademico) {
+    throw new Error("El estado academico seleccionado no existe");
+  }
+
+  const nombreEstadoAcademico =
+    normalizarTexto(payload.estadoAcademico ?? payload.EstadoAcademico) ||
+    estadoAcademico?.NombreEstadoAcademico ||
+    null;
+
+  const sql = `
+    INSERT INTO TB_EmpleadoGradoAcademico (
+      IdEmpleado,
+      IdGradoAcademico,
+      IdEstadoAcademico,
+      NombreGradoAcademico,
+      Titulo,
+      EstadoAcademico,
+      AnioGraduacion,
+      RutaDocumentoAdjunto,
+      InstitucionEducativa,
+      Graduado,
+      Activo
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `;
+
+  const rutaDocumentoAdjunto = archivo
+    ? `/data/empleados/${empCod}/documentos-academicos/${archivo.filename}`
+    : null;
+
+  const graduado =
+    nombreEstadoAcademico &&
+    normalizarTexto(nombreEstadoAcademico)?.toUpperCase() === "COMPLETADO"
+      ? 1
+      : 0;
+
+  const result = await query(sql, [
+    empleado.IdEmpleado,
+    idGradoAcademico,
+    idEstadoAcademico,
+    gradoAcademico?.NombreGradoAcademico ||
+      normalizarTexto(payload.nombreGradoAcademico ?? payload.NombreGradoAcademico),
+    normalizarTexto(payload.titulo ?? payload.Titulo),
+    nombreEstadoAcademico,
+    payload.anioGraduacion ?? payload.AnioGraduacion ?? null,
+    rutaDocumentoAdjunto,
+    normalizarTexto(
+      payload.institucionEducativa ??
+        payload.InstitucionEducativa ??
+        payload.institucion
+    ),
+    graduado
+  ]);
+
+  const rows = await query(
+    `
+      SELECT
+        ega.IdEmpleadoGradoAcademico,
+        ega.IdEmpleado,
+        ega.IdGradoAcademico,
+        ega.IdEstadoAcademico,
+        ega.NombreGradoAcademico,
+        ega.Titulo,
+        ega.EstadoAcademico,
+        ega.AnioGraduacion,
+        ega.RutaDocumentoAdjunto,
+        ega.InstitucionEducativa,
+        ega.Graduado,
+        ega.Activo,
+        ega.FechaCreacion,
+        ega.FechaActualizacion
+      FROM TB_EmpleadoGradoAcademico ega
+      WHERE ega.IdEmpleadoGradoAcademico = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarGradoAcademicoEmpleado = async (empCod, idEmpleadoGradoAcademico) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const sql = `
+    UPDATE TB_EmpleadoGradoAcademico
+    SET Activo = 0
+    WHERE IdEmpleadoGradoAcademico = ?
+      AND IdEmpleado = ?
+  `;
+
+  const result = await query(sql, [
+    idEmpleadoGradoAcademico,
+    empleado.IdEmpleado
+  ]);
+
+  return result.affectedRows > 0;
+};
+
 module.exports = {
   obtenerPorCodigo,
   guardarInformacionPersonalDesdeLegacy,
   obtenerFormularioEmpleado,
   inicializarEmpleadoDesdeLegacy,
   actualizarInformacionPersonal,
-  actualizarDocumentoEmpleado
+  actualizarDocumentoEmpleado,
+  listarGradosAcademicosEmpleado,
+  crearGradoAcademicoEmpleado,
+  eliminarGradoAcademicoEmpleado
 };

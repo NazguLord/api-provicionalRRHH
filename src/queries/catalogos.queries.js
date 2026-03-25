@@ -84,11 +84,26 @@ const listarGradosAcademicos = async () => {
   return query(sql);
 };
 
+const listarEstadosAcademicos = async () => {
+  const sql = `
+    SELECT
+      IdEstadoAcademico,
+      NombreEstadoAcademico,
+      Activo
+    FROM TB_CatEstadoAcademico
+    WHERE Activo = 1
+    ORDER BY IdEstadoAcademico ASC
+  `;
+
+  return query(sql);
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
-  listarGradosAcademicos
+  listarGradosAcademicos,
+  listarEstadosAcademicos
 };
