@@ -1,6 +1,9 @@
 const express = require("express");
 
 const empleadosController = require("../controllers/empleados.controller");
+const {
+  uploadEmpleadoDocumento
+} = require("../middlewares/upload.middleware");
 
 const router = express.Router();
 
@@ -12,6 +15,11 @@ router.get("/:empCod/formulario", empleadosController.obtenerFormularioEmpleado)
 router.patch(
   "/:empCod/informacion-personal",
   empleadosController.actualizarInformacionPersonal
+);
+router.post(
+  "/:empCod/documentos/:tipoDocumento",
+  uploadEmpleadoDocumento.single("archivo"),
+  empleadosController.subirDocumentoEmpleado
 );
 router.get("/:empCod", empleadosController.obtenerPorCodigo);
 

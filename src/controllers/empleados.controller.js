@@ -152,10 +152,53 @@ const actualizarInformacionPersonal = async (req, res) => {
   }
 };
 
+const subirDocumentoEmpleado = async (req, res) => {
+  try {
+    const { empCod, tipoDocumento } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        ok: false,
+        message: "Debes adjuntar un archivo en el campo 'archivo'"
+      });
+    }
+
+    const empleadoActualizado = await empleadosQueries.actualizarDocumentoEmpleado(
+      empCod,
+      tipoDocumento,
+      req.file
+    );
+
+    if (!empleadoActualizado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Documento cargado correctamente",
+      data: empleadoActualizado
+    });
+  } catch (error) {
+    const status = error.message.includes("Tipo de documento")
+      ? 400
+      : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al cargar el documento",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   obtenerPorCodigo,
   guardarInformacionPersonal,
   obtenerFormularioEmpleado,
   inicializarFormularioEmpleado,
-  actualizarInformacionPersonal
+  actualizarInformacionPersonal,
+  subirDocumentoEmpleado
 };

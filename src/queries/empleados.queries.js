@@ -127,6 +127,8 @@ const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "ModeloVehiculo",
   "AnioVehiculo",
   "NombreConyuge",
+  "NombreContactoEmergencia",
+  "TelefonoContactoEmergencia",
   "NombreParroquia",
   "NombreParroco",
   "NombreMovimiento",
@@ -136,7 +138,10 @@ const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "IdTipoEmpleado",
   "CodigoCampus",
   "LugarNacimiento",
-  "Activo"
+  "Activo",
+  "RutaImagenPerfil",
+  "RutaHojaVida",
+  "RutaDocumentoIdentidad"
 ];
 
 const obtenerPorCodigo = async (empCod) => {
@@ -166,6 +171,8 @@ const obtenerPorCodigo = async (empCod) => {
       EmpAutoMod,
       EmpAutoAnio,
       EmpCoyNom,
+      EmpEmrNom,
+      EmpEmrTel,
       EmpParNom,
       EmpParPdr,
       EmpParMov,
@@ -229,6 +236,8 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       ModeloVehiculo,
       AnioVehiculo,
       NombreConyuge,
+      NombreContactoEmergencia,
+      TelefonoContactoEmergencia,
       NombreParroquia,
       NombreParroco,
       NombreMovimiento,
@@ -238,6 +247,9 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       IdTipoEmpleado,
       CodigoCampus,
       LugarNacimiento,
+      RutaImagenPerfil,
+      RutaHojaVida,
+      RutaDocumentoIdentidad,
       Activo,
       FechaCreacion,
       FechaActualizacion
@@ -248,6 +260,41 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
 
   const rows = await query(sql, [codigoEmpleado]);
   return rows[0] || null;
+};
+
+const mapearFormularioInformacionPersonal = (empleado = {}) => {
+  if (!empleado) {
+    return null;
+  }
+
+  return {
+    IdEmpleado: empleado.IdEmpleado ?? null,
+    CodigoEmpleado: empleado.CodigoEmpleado ?? null,
+    NumeroIdentidad: empleado.NumeroIdentidad ?? null,
+    PrimerNombre: empleado.PrimerNombre ?? null,
+    SegundoNombre: empleado.SegundoNombre ?? null,
+    TercerNombre: empleado.TercerNombre ?? null,
+    PrimerApellido: empleado.PrimerApellido ?? null,
+    SegundoApellido: empleado.SegundoApellido ?? null,
+    NombreCompleto: [
+      empleado.PrimerNombre,
+      empleado.SegundoNombre,
+      empleado.TercerNombre,
+      empleado.PrimerApellido,
+      empleado.SegundoApellido
+    ]
+      .filter((valor) => normalizarTexto(valor))
+      .join(" "),
+    CorreoElectronicoPersonal: empleado.CorreoElectronicoPersonal ?? null,
+    CorreoElectronicoInstitucional:
+      empleado.CorreoElectronicoInstitucional ?? null,
+    NumeroColegio: empleado.NumeroColegio ?? null,
+    RutaImagenPerfil: empleado.RutaImagenPerfil ?? null,
+    RutaHojaVida: empleado.RutaHojaVida ?? null,
+    RutaDocumentoIdentidad: empleado.RutaDocumentoIdentidad ?? null,
+    inicializado: Boolean(empleado.inicializado),
+    origen: empleado.origen ?? "nuevo"
+  };
 };
 
 const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
@@ -333,6 +380,12 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     NombreConyuge: normalizarTexto(
       payload.nombreConyuge ?? legacy.EmpCoyNom
     ),
+    NombreContactoEmergencia: normalizarTexto(
+      payload.nombreContactoEmergencia ?? payload.NombreContactoEmergencia ?? legacy.EmpEmrNom
+    ),
+    TelefonoContactoEmergencia: normalizarTexto(
+      payload.telefonoContactoEmergencia ?? payload.TelefonoContactoEmergencia ?? legacy.EmpEmrTel
+    ),
     NombreParroquia: normalizarTexto(
       payload.nombreParroquia ?? legacy.EmpParNom
     ),
@@ -350,6 +403,9 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     LugarNacimiento: normalizarTexto(
       payload.lugarNacimiento ?? legacy.EmpNac
     ),
+    RutaImagenPerfil: normalizarTexto(payload.rutaImagenPerfil),
+    RutaHojaVida: normalizarTexto(payload.rutaHojaVida),
+    RutaDocumentoIdentidad: normalizarTexto(payload.rutaDocumentoIdentidad),
     Activo:
       payload.activo !== undefined
         ? valorBooleano(payload.activo)
@@ -365,6 +421,49 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
   if (!datos) {
     return null;
   }
+
+  const valoresInsert = [
+    datos.CodigoEmpleado,
+    datos.NumeroIdentidad,
+    datos.PrimerNombre,
+    datos.SegundoNombre,
+    datos.TercerNombre,
+    datos.PrimerApellido,
+    datos.SegundoApellido,
+    datos.DireccionHogar,
+    datos.IdEstadoCivil,
+    datos.Telefono,
+    datos.CelularEmpresa,
+    datos.CorreoElectronicoPersonal,
+    datos.CorreoElectronicoInstitucional,
+    datos.FechaNacimiento,
+    datos.NumeroIHSS,
+    datos.NumeroRAP,
+    datos.NumeroColegio,
+    datos.LicenciaVehiculo,
+    datos.FechaIngreso,
+    datos.NumeroCuentaBancaria,
+    datos.PoseeVehiculo,
+    datos.MarcaVehiculo,
+    datos.ModeloVehiculo,
+    datos.AnioVehiculo,
+    datos.NombreConyuge,
+    datos.NombreContactoEmergencia,
+    datos.TelefonoContactoEmergencia,
+    datos.NombreParroquia,
+    datos.NombreParroco,
+    datos.NombreMovimiento,
+    datos.EstadoEmpleado,
+    datos.Genero,
+    datos.IdTipoSangre,
+    datos.IdTipoEmpleado,
+    datos.CodigoCampus,
+    datos.LugarNacimiento,
+    datos.RutaImagenPerfil,
+    datos.RutaHojaVida,
+    datos.RutaDocumentoIdentidad,
+    datos.Activo
+  ];
 
   const sql = `
     INSERT INTO TB_Empleados (
@@ -393,6 +492,8 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       ModeloVehiculo,
       AnioVehiculo,
       NombreConyuge,
+      NombreContactoEmergencia,
+      TelefonoContactoEmergencia,
       NombreParroquia,
       NombreParroco,
       NombreMovimiento,
@@ -402,11 +503,11 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       IdTipoEmpleado,
       CodigoCampus,
       LugarNacimiento,
+      RutaImagenPerfil,
+      RutaHojaVida,
+      RutaDocumentoIdentidad,
       Activo
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-    )
+    ) VALUES (${valoresInsert.map(() => "?").join(", ")})
     ON DUPLICATE KEY UPDATE
       NumeroIdentidad = VALUES(NumeroIdentidad),
       PrimerNombre = VALUES(PrimerNombre),
@@ -432,6 +533,8 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       ModeloVehiculo = VALUES(ModeloVehiculo),
       AnioVehiculo = VALUES(AnioVehiculo),
       NombreConyuge = VALUES(NombreConyuge),
+      NombreContactoEmergencia = VALUES(NombreContactoEmergencia),
+      TelefonoContactoEmergencia = VALUES(TelefonoContactoEmergencia),
       NombreParroquia = VALUES(NombreParroquia),
       NombreParroco = VALUES(NombreParroco),
       NombreMovimiento = VALUES(NombreMovimiento),
@@ -441,46 +544,13 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       IdTipoEmpleado = VALUES(IdTipoEmpleado),
       CodigoCampus = VALUES(CodigoCampus),
       LugarNacimiento = VALUES(LugarNacimiento),
+      RutaImagenPerfil = VALUES(RutaImagenPerfil),
+      RutaHojaVida = VALUES(RutaHojaVida),
+      RutaDocumentoIdentidad = VALUES(RutaDocumentoIdentidad),
       Activo = VALUES(Activo)
   `;
 
-  await query(sql, [
-    datos.CodigoEmpleado,
-    datos.NumeroIdentidad,
-    datos.PrimerNombre,
-    datos.SegundoNombre,
-    datos.TercerNombre,
-    datos.PrimerApellido,
-    datos.SegundoApellido,
-    datos.DireccionHogar,
-    datos.IdEstadoCivil,
-    datos.Telefono,
-    datos.CelularEmpresa,
-    datos.CorreoElectronicoPersonal,
-    datos.CorreoElectronicoInstitucional,
-    datos.FechaNacimiento,
-    datos.NumeroIHSS,
-    datos.NumeroRAP,
-    datos.NumeroColegio,
-    datos.LicenciaVehiculo,
-    datos.FechaIngreso,
-    datos.NumeroCuentaBancaria,
-    datos.PoseeVehiculo,
-    datos.MarcaVehiculo,
-    datos.ModeloVehiculo,
-    datos.AnioVehiculo,
-    datos.NombreConyuge,
-    datos.NombreParroquia,
-    datos.NombreParroco,
-    datos.NombreMovimiento,
-    datos.EstadoEmpleado,
-    datos.Genero,
-    datos.IdTipoSangre,
-    datos.IdTipoEmpleado,
-    datos.CodigoCampus,
-    datos.LugarNacimiento,
-    datos.Activo
-  ]);
+  await query(sql, valoresInsert);
 
   return obtenerEmpleadoNuevoPorCodigo(datos.CodigoEmpleado);
 };
@@ -503,17 +573,22 @@ const mapearLegacyAFormulario = async (empCod) => {
 };
 
 const obtenerFormularioEmpleado = async (empCod) => {
-  const empleadoNuevo = await obtenerEmpleadoNuevoPorCodigo(empCod);
+  let empleadoNuevo = await obtenerEmpleadoNuevoPorCodigo(empCod);
+
+  if (!empleadoNuevo) {
+    empleadoNuevo = await guardarInformacionPersonalDesdeLegacy(empCod, {});
+  }
 
   if (empleadoNuevo) {
-    return {
+    return mapearFormularioInformacionPersonal({
       ...empleadoNuevo,
       inicializado: true,
       origen: "nuevo"
-    };
+    });
   }
 
-  return mapearLegacyAFormulario(empCod);
+  const legacy = await mapearLegacyAFormulario(empCod);
+  return mapearFormularioInformacionPersonal(legacy);
 };
 
 const inicializarEmpleadoDesdeLegacy = async (empCod, payload = {}) => {
@@ -540,39 +615,83 @@ const inicializarEmpleadoDesdeLegacy = async (empCod, payload = {}) => {
 const normalizarPayloadInformacionPersonal = (payload = {}) => {
   const mapa = {
     numeroIdentidad: "NumeroIdentidad",
+    NumeroIdentidad: "NumeroIdentidad",
     primerNombre: "PrimerNombre",
+    PrimerNombre: "PrimerNombre",
     segundoNombre: "SegundoNombre",
+    SegundoNombre: "SegundoNombre",
     tercerNombre: "TercerNombre",
+    TercerNombre: "TercerNombre",
     primerApellido: "PrimerApellido",
+    PrimerApellido: "PrimerApellido",
     segundoApellido: "SegundoApellido",
+    SegundoApellido: "SegundoApellido",
     direccionHogar: "DireccionHogar",
+    DireccionHogar: "DireccionHogar",
     idEstadoCivil: "IdEstadoCivil",
+    IdEstadoCivil: "IdEstadoCivil",
     telefono: "Telefono",
+    Telefono: "Telefono",
     celularEmpresa: "CelularEmpresa",
+    CelularEmpresa: "CelularEmpresa",
     correoElectronicoPersonal: "CorreoElectronicoPersonal",
+    CorreoElectronicoPersonal: "CorreoElectronicoPersonal",
     correoElectronicoInstitucional: "CorreoElectronicoInstitucional",
+    CorreoElectronicoInstitucional: "CorreoElectronicoInstitucional",
     fechaNacimiento: "FechaNacimiento",
+    FechaNacimiento: "FechaNacimiento",
     numeroIHSS: "NumeroIHSS",
+    NumeroIHSS: "NumeroIHSS",
     numeroRAP: "NumeroRAP",
+    NumeroRAP: "NumeroRAP",
     numeroColegio: "NumeroColegio",
+    NumeroColegio: "NumeroColegio",
     licenciaVehiculo: "LicenciaVehiculo",
+    LicenciaVehiculo: "LicenciaVehiculo",
     fechaIngreso: "FechaIngreso",
+    FechaIngreso: "FechaIngreso",
     numeroCuentaBancaria: "NumeroCuentaBancaria",
+    NumeroCuentaBancaria: "NumeroCuentaBancaria",
     poseeVehiculo: "PoseeVehiculo",
+    PoseeVehiculo: "PoseeVehiculo",
     marcaVehiculo: "MarcaVehiculo",
+    MarcaVehiculo: "MarcaVehiculo",
     modeloVehiculo: "ModeloVehiculo",
+    ModeloVehiculo: "ModeloVehiculo",
     anioVehiculo: "AnioVehiculo",
+    AnioVehiculo: "AnioVehiculo",
     nombreConyuge: "NombreConyuge",
+    NombreConyuge: "NombreConyuge",
+    nombreContactoEmergencia: "NombreContactoEmergencia",
+    NombreContactoEmergencia: "NombreContactoEmergencia",
+    telefonoContactoEmergencia: "TelefonoContactoEmergencia",
+    TelefonoContactoEmergencia: "TelefonoContactoEmergencia",
     nombreParroquia: "NombreParroquia",
+    NombreParroquia: "NombreParroquia",
     nombreParroco: "NombreParroco",
+    NombreParroco: "NombreParroco",
     nombreMovimiento: "NombreMovimiento",
+    NombreMovimiento: "NombreMovimiento",
     estadoEmpleado: "EstadoEmpleado",
+    EstadoEmpleado: "EstadoEmpleado",
     genero: "Genero",
+    Genero: "Genero",
     idTipoSangre: "IdTipoSangre",
+    IdTipoSangre: "IdTipoSangre",
     idTipoEmpleado: "IdTipoEmpleado",
+    IdTipoEmpleado: "IdTipoEmpleado",
     codigoCampus: "CodigoCampus",
+    CodigoCampus: "CodigoCampus",
     lugarNacimiento: "LugarNacimiento",
-    activo: "Activo"
+    LugarNacimiento: "LugarNacimiento",
+    rutaImagenPerfil: "RutaImagenPerfil",
+    RutaImagenPerfil: "RutaImagenPerfil",
+    rutaHojaVida: "RutaHojaVida",
+    RutaHojaVida: "RutaHojaVida",
+    rutaDocumentoIdentidad: "RutaDocumentoIdentidad",
+    RutaDocumentoIdentidad: "RutaDocumentoIdentidad",
+    activo: "Activo",
+    Activo: "Activo"
   };
 
   const datos = {};
@@ -641,10 +760,62 @@ const actualizarInformacionPersonal = async (empCod, payload = {}) => {
   return obtenerEmpleadoNuevoPorCodigo(empCod);
 };
 
+const asegurarEmpleadoInicializado = async (empCod) => {
+  const legacy = await obtenerPorCodigo(empCod);
+
+  if (!legacy) {
+    return null;
+  }
+
+  let empleadoNuevo = await obtenerEmpleadoNuevoPorCodigo(empCod);
+
+  if (!empleadoNuevo) {
+    empleadoNuevo = await guardarInformacionPersonalDesdeLegacy(empCod, {});
+  }
+
+  return empleadoNuevo;
+};
+
+const actualizarDocumentoEmpleado = async (empCod, tipoDocumento, archivo) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const mapaColumnas = {
+    "foto-perfil": "RutaImagenPerfil",
+    foto: "RutaImagenPerfil",
+    cv: "RutaHojaVida",
+    "hoja-vida": "RutaHojaVida",
+    identidad: "RutaDocumentoIdentidad",
+    "documento-identidad": "RutaDocumentoIdentidad"
+  };
+
+  const columna = mapaColumnas[String(tipoDocumento).toLowerCase()];
+
+  if (!columna) {
+    throw new Error("Tipo de documento no valido");
+  }
+
+  const rutaArchivo = `/data/empleados/${empCod}/${archivo.filename}`;
+
+  const sql = `
+    UPDATE TB_Empleados
+    SET ${columna} = ?
+    WHERE CodigoEmpleado = ?
+  `;
+
+  await query(sql, [rutaArchivo, empCod]);
+
+  return obtenerEmpleadoNuevoPorCodigo(empCod);
+};
+
 module.exports = {
   obtenerPorCodigo,
   guardarInformacionPersonalDesdeLegacy,
   obtenerFormularioEmpleado,
   inicializarEmpleadoDesdeLegacy,
-  actualizarInformacionPersonal
+  actualizarInformacionPersonal,
+  actualizarDocumentoEmpleado
 };
