@@ -98,6 +98,20 @@ const listarEstadosAcademicos = async () => {
   return query(sql);
 };
 
+const listarTiposDiplomado = async () => {
+  const sql = `
+    SELECT
+      IdTipoDiplomado,
+      NombreTipoDiplomado,
+      Activo
+    FROM TB_CatTipoDiplomado
+    WHERE Activo = 1
+    ORDER BY NombreTipoDiplomado ASC
+  `;
+
+  return query(sql);
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -105,5 +119,6 @@ module.exports = {
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos,
-  listarEstadosAcademicos
+  listarEstadosAcademicos,
+  listarTiposDiplomado
 };

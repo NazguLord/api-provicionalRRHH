@@ -137,6 +137,24 @@ const listarEstadosAcademicos = async (req, res) => {
   }
 };
 
+const listarTiposDiplomado = async (req, res) => {
+  try {
+    const tiposDiplomado = await catalogosQueries.listarTiposDiplomado();
+
+    res.json({
+      ok: true,
+      message: "Tipos de diplomado obtenidos correctamente",
+      data: tiposDiplomado
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los tipos de diplomado",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -144,5 +162,6 @@ module.exports = {
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos,
-  listarEstadosAcademicos
+  listarEstadosAcademicos,
+  listarTiposDiplomado
 };

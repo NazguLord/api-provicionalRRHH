@@ -88,6 +88,30 @@ const obtenerFormularioEmpleado = async (req, res) => {
   }
 };
 
+const obtenerEstadoActualizacion = async (req, res) => {
+  try {
+    const { empCod, tipoEmpleado } = req.params;
+
+    const estadoActualizacion =
+      await empleadosQueries.obtenerEstadoActualizacionEmpleado(
+        empCod,
+        tipoEmpleado
+      );
+
+    res.json({
+      ok: true,
+      message: "Estado de actualizacion obtenido correctamente",
+      data: estadoActualizacion
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener el estado de actualizacion",
+      error: error.message
+    });
+  }
+};
+
 const inicializarFormularioEmpleado = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -256,6 +280,42 @@ const crearGradoAcademico = async (req, res) => {
   }
 };
 
+const actualizarGradoAcademico = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoGradoAcademico } = req.params;
+    const payload = req.body || {};
+
+    const gradoAcademico =
+      await empleadosQueries.actualizarGradoAcademicoEmpleado(
+        empCod,
+        Number(idEmpleadoGradoAcademico),
+        payload,
+        req.file || null
+      );
+
+    if (!gradoAcademico) {
+      return res.status(404).json({
+        ok: false,
+        message: "Grado academico no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Grado academico actualizado correctamente",
+      data: gradoAcademico
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar el grado academico",
+      error: error.message
+    });
+  }
+};
+
 const eliminarGradoAcademico = async (req, res) => {
   try {
     const { empCod, idEmpleadoGradoAcademico } = req.params;
@@ -285,14 +345,276 @@ const eliminarGradoAcademico = async (req, res) => {
   }
 };
 
+const listarExperienciasProfesionales = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const experiencias =
+      await empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod);
+
+    if (!experiencias) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencias profesionales obtenidas correctamente",
+      data: experiencias
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las experiencias profesionales",
+      error: error.message
+    });
+  }
+};
+
+const crearExperienciaProfesional = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const experiencia =
+      await empleadosQueries.crearExperienciaProfesionalEmpleado(
+        empCod,
+        payload
+      );
+
+    if (!experiencia) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Experiencia profesional guardada correctamente",
+      data: experiencia
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar la experiencia profesional",
+      error: error.message
+    });
+  }
+};
+
+const actualizarExperienciaProfesional = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoExperienciaProfesional } = req.params;
+    const payload = req.body || {};
+
+    const experiencia =
+      await empleadosQueries.actualizarExperienciaProfesionalEmpleado(
+        empCod,
+        Number(idEmpleadoExperienciaProfesional),
+        payload
+      );
+
+    if (!experiencia) {
+      return res.status(404).json({
+        ok: false,
+        message: "Experiencia profesional no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencia profesional actualizada correctamente",
+      data: experiencia
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar la experiencia profesional",
+      error: error.message
+    });
+  }
+};
+
+const eliminarExperienciaProfesional = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoExperienciaProfesional } = req.params;
+
+    const eliminado =
+      await empleadosQueries.eliminarExperienciaProfesionalEmpleado(
+        empCod,
+        Number(idEmpleadoExperienciaProfesional)
+      );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Experiencia profesional no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencia profesional eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la experiencia profesional",
+      error: error.message
+    });
+  }
+};
+
+const listarDiplomados = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const diplomados = await empleadosQueries.listarDiplomadosEmpleado(empCod);
+
+    if (!diplomados) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Diplomados obtenidos correctamente",
+      data: diplomados
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los diplomados",
+      error: error.message
+    });
+  }
+};
+
+const crearDiplomado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const diplomado = await empleadosQueries.crearDiplomadoEmpleado(
+      empCod,
+      payload,
+      req.file || null
+    );
+
+    if (!diplomado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Diplomado guardado correctamente",
+      data: diplomado
+    });
+  } catch (error) {
+    const status =
+      error.message.includes("no existe") ||
+      error.message.includes("Debes adjuntar")
+        ? 400
+        : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar el diplomado",
+      error: error.message
+    });
+  }
+};
+
+const actualizarDiplomado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoDiplomado } = req.params;
+    const payload = req.body || {};
+
+    const diplomado = await empleadosQueries.actualizarDiplomadoEmpleado(
+      empCod,
+      Number(idEmpleadoDiplomado),
+      payload,
+      req.file || null
+    );
+
+    if (!diplomado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Diplomado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Diplomado actualizado correctamente",
+      data: diplomado
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar el diplomado",
+      error: error.message
+    });
+  }
+};
+
+const eliminarDiplomado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoDiplomado } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarDiplomadoEmpleado(
+      empCod,
+      Number(idEmpleadoDiplomado)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Diplomado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Diplomado eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el diplomado",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   obtenerPorCodigo,
   guardarInformacionPersonal,
+  obtenerEstadoActualizacion,
   obtenerFormularioEmpleado,
   inicializarFormularioEmpleado,
   actualizarInformacionPersonal,
   subirDocumentoEmpleado,
   listarGradosAcademicos,
   crearGradoAcademico,
-  eliminarGradoAcademico
+  actualizarGradoAcademico,
+  eliminarGradoAcademico,
+  listarExperienciasProfesionales,
+  crearExperienciaProfesional,
+  actualizarExperienciaProfesional,
+  eliminarExperienciaProfesional,
+  listarDiplomados,
+  crearDiplomado,
+  actualizarDiplomado,
+  eliminarDiplomado
 };
