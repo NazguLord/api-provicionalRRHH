@@ -36,6 +36,24 @@ const listarEstadosCiviles = async (req, res) => {
   }
 };
 
+const listarTiposEmpleado = async (req, res) => {
+  try {
+    const tiposEmpleado = await catalogosQueries.listarTiposEmpleado();
+
+    res.json({
+      ok: true,
+      message: "Tipos de empleado obtenidos correctamente",
+      data: tiposEmpleado
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los tipos de empleado",
+      error: error.message
+    });
+  }
+};
+
 const obtenerTipoEmpleadoPorCodigo = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -174,14 +192,94 @@ const listarNivelesExperienciaDocente = async (req, res) => {
   }
 };
 
+const listarMetodologiasActivas = async (req, res) => {
+  try {
+    const metodologiasActivas =
+      await catalogosQueries.listarMetodologiasActivas();
+
+    res.json({
+      ok: true,
+      message: "Metodologias activas obtenidas correctamente",
+      data: metodologiasActivas
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las metodologias activas",
+      error: error.message
+    });
+  }
+};
+
+const listarPlataformasVirtualesEducativas = async (req, res) => {
+  try {
+    const plataformasVirtualesEducativas =
+      await catalogosQueries.listarPlataformasVirtualesEducativas();
+
+    res.json({
+      ok: true,
+      message: "Plataformas virtuales educativas obtenidas correctamente",
+      data: plataformasVirtualesEducativas
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las plataformas virtuales educativas",
+      error: error.message
+    });
+  }
+};
+
+const listarCampus = async (req, res) => {
+  try {
+    const campus = await catalogosQueries.listarCampus();
+
+    res.json({
+      ok: true,
+      message: "Campus obtenidos correctamente",
+      data: campus
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los campus",
+      error: error.message
+    });
+  }
+};
+
+const listarAreasInteresDocencia = async (req, res) => {
+  try {
+    const areasInteresDocencia =
+      await catalogosQueries.listarAreasInteresDocencia();
+
+    res.json({
+      ok: true,
+      message: "Areas de interes para docencia obtenidas correctamente",
+      data: areasInteresDocencia
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las areas de interes para docencia",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
+  listarTiposEmpleado,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos,
   listarEstadosAcademicos,
   listarTiposDiplomado,
-  listarNivelesExperienciaDocente
+  listarNivelesExperienciaDocente,
+  listarMetodologiasActivas,
+  listarPlataformasVirtualesEducativas,
+  listarCampus,
+  listarAreasInteresDocencia
 };

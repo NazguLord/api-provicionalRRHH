@@ -172,6 +172,112 @@ router.delete(
   "/:empCod/proyectos-experiencia/:idEmpleadoProyectoExperiencia",
   empleadosController.eliminarProyectoExperiencia
 );
+router.get(
+  "/:empCod/experiencias-sector-productivo",
+  empleadosController.listarExperienciasSectorProductivo
+);
+router.post(
+  "/:empCod/experiencias-sector-productivo",
+  empleadosController.crearExperienciaSectorProductivo
+);
+router.patch(
+  "/:empCod/experiencias-sector-productivo/:idEmpleadoExperienciaSectorProductivo",
+  empleadosController.actualizarExperienciaSectorProductivo
+);
+router.delete(
+  "/:empCod/experiencias-sector-productivo/:idEmpleadoExperienciaSectorProductivo",
+  empleadosController.eliminarExperienciaSectorProductivo
+);
+router.get(
+  "/:empCod/vinculos-industria",
+  empleadosController.listarVinculosIndustria
+);
+router.post(
+  "/:empCod/vinculos-industria",
+  empleadosController.crearVinculoIndustria
+);
+router.patch(
+  "/:empCod/vinculos-industria/:idEmpleadoVinculoIndustria",
+  empleadosController.actualizarVinculoIndustria
+);
+router.delete(
+  "/:empCod/vinculos-industria/:idEmpleadoVinculoIndustria",
+  empleadosController.eliminarVinculoIndustria
+);
+router.get("/:empCod/idiomas", empleadosController.listarIdiomasEmpleado);
+router.post("/:empCod/idiomas", empleadosController.crearIdiomaEmpleado);
+router.patch(
+  "/:empCod/idiomas/:idEmpleadoIdioma",
+  empleadosController.actualizarIdiomaEmpleado
+);
+router.delete(
+  "/:empCod/idiomas/:idEmpleadoIdioma",
+  empleadosController.eliminarIdiomaEmpleado
+);
+router.get(
+  "/:empCod/competencias-digitales",
+  empleadosController.listarCompetenciasDigitales
+);
+router.post(
+  "/:empCod/competencias-digitales",
+  empleadosController.crearCompetenciaDigital
+);
+router.patch(
+  "/:empCod/competencias-digitales/:idEmpleadoCompetenciaDigital",
+  empleadosController.actualizarCompetenciaDigital
+);
+router.delete(
+  "/:empCod/competencias-digitales/:idEmpleadoCompetenciaDigital",
+  empleadosController.eliminarCompetenciaDigital
+);
+router.get(
+  "/:empCod/metodologias-activas",
+  empleadosController.listarMetodologiasActivasEmpleado
+);
+router.post(
+  "/:empCod/metodologias-activas",
+  empleadosController.crearMetodologiaActivaEmpleado
+);
+router.patch(
+  "/:empCod/metodologias-activas/:idEmpleadoMetodologiaActiva",
+  empleadosController.actualizarMetodologiaActivaEmpleado
+);
+router.delete(
+  "/:empCod/metodologias-activas/:idEmpleadoMetodologiaActiva",
+  empleadosController.eliminarMetodologiaActivaEmpleado
+);
+router.get(
+  "/:empCod/plataformas-virtuales",
+  empleadosController.listarPlataformasVirtualesEmpleado
+);
+router.post(
+  "/:empCod/plataformas-virtuales",
+  empleadosController.crearPlataformaVirtualEmpleado
+);
+router.patch(
+  "/:empCod/plataformas-virtuales/:idEmpleadoPlataformaVirtual",
+  empleadosController.actualizarPlataformaVirtualEmpleado
+);
+router.delete(
+  "/:empCod/plataformas-virtuales/:idEmpleadoPlataformaVirtual",
+  empleadosController.eliminarPlataformaVirtualEmpleado
+);
+router.get(
+  "/:empCod/preferencias-docencia",
+  empleadosController.listarPreferenciasDocencia
+);
+router.post(
+  "/:empCod/preferencias-docencia",
+  empleadosController.crearPreferenciaDocencia
+);
+router.patch(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia",
+  empleadosController.actualizarPreferenciaDocencia
+);
+router.delete(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia",
+  empleadosController.eliminarPreferenciaDocencia
+);
 router.get("/:empCod", empleadosController.obtenerPorCodigo);
 
 module.exports = router;

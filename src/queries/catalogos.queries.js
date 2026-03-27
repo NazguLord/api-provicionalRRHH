@@ -28,6 +28,20 @@ const listarEstadosCiviles = async () => {
   return query(sql);
 };
 
+const listarTiposEmpleado = async () => {
+  const sql = `
+    SELECT
+      IdTipoEmpleado,
+      NombreTipoEmpleado,
+      Activo
+    FROM TB_CatTipoEmpleado
+    WHERE Activo = 1
+    ORDER BY NombreTipoEmpleado ASC
+  `;
+
+  return query(sql);
+};
+
 const obtenerTipoEmpleadoPorCodigo = async (empCod) => {
   const sql = `
     SELECT
@@ -126,14 +140,75 @@ const listarNivelesExperienciaDocente = async () => {
   return query(sql);
 };
 
+const listarMetodologiasActivas = async () => {
+  const sql = `
+    SELECT
+      IdMetodologiaActiva,
+      NombreMetodologiaActiva,
+      Activo
+    FROM TB_CatMetodologiaActiva
+    WHERE Activo = 1
+    ORDER BY NombreMetodologiaActiva ASC
+  `;
+
+  return query(sql);
+};
+
+const listarPlataformasVirtualesEducativas = async () => {
+  const sql = `
+    SELECT
+      IdPlataformaVirtualEducativa,
+      NombrePlataformaVirtualEducativa,
+      Activo
+    FROM TB_CatPlataformaVirtualEducativa
+    WHERE Activo = 1
+    ORDER BY NombrePlataformaVirtualEducativa ASC
+  `;
+
+  return query(sql);
+};
+
+const listarCampus = async () => {
+  const sql = `
+    SELECT
+      IdCampus,
+      NombreCampus,
+      Activo
+    FROM TB_CatCampus
+    WHERE Activo = 1
+    ORDER BY NombreCampus ASC
+  `;
+
+  return query(sql);
+};
+
+const listarAreasInteresDocencia = async () => {
+  const sql = `
+    SELECT
+      IdAreaInteresDocencia,
+      NombreAreaInteresDocencia,
+      Activo
+    FROM TB_CatAreaInteresDocencia
+    WHERE Activo = 1
+    ORDER BY NombreAreaInteresDocencia ASC
+  `;
+
+  return query(sql);
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
+  listarTiposEmpleado,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,
   listarNivelesIdioma,
   listarGradosAcademicos,
   listarEstadosAcademicos,
   listarTiposDiplomado,
-  listarNivelesExperienciaDocente
+  listarNivelesExperienciaDocente,
+  listarMetodologiasActivas,
+  listarPlataformasVirtualesEducativas,
+  listarCampus,
+  listarAreasInteresDocencia
 };

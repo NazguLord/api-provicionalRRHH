@@ -1319,6 +1319,856 @@ const eliminarProyectoExperiencia = async (req, res) => {
   }
 };
 
+const listarExperienciasSectorProductivo = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const experienciasSectorProductivo =
+      await empleadosQueries.listarExperienciasSectorProductivoEmpleado(empCod);
+
+    if (!experienciasSectorProductivo) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencias del sector productivo obtenidas correctamente",
+      data: experienciasSectorProductivo
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las experiencias del sector productivo",
+      error: error.message
+    });
+  }
+};
+
+const crearExperienciaSectorProductivo = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const experienciaSectorProductivo =
+      await empleadosQueries.crearExperienciaSectorProductivoEmpleado(
+        empCod,
+        payload
+      );
+
+    if (!experienciaSectorProductivo) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Experiencia del sector productivo guardada correctamente",
+      data: experienciaSectorProductivo
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar la experiencia del sector productivo",
+      error: error.message
+    });
+  }
+};
+
+const actualizarExperienciaSectorProductivo = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoExperienciaSectorProductivo } = req.params;
+    const payload = req.body || {};
+
+    const experienciaSectorProductivo =
+      await empleadosQueries.actualizarExperienciaSectorProductivoEmpleado(
+        empCod,
+        Number(idEmpleadoExperienciaSectorProductivo),
+        payload
+      );
+
+    if (!experienciaSectorProductivo) {
+      return res.status(404).json({
+        ok: false,
+        message: "Experiencia del sector productivo no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencia del sector productivo actualizada correctamente",
+      data: experienciaSectorProductivo
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar la experiencia del sector productivo",
+      error: error.message
+    });
+  }
+};
+
+const eliminarExperienciaSectorProductivo = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoExperienciaSectorProductivo } = req.params;
+
+    const eliminado =
+      await empleadosQueries.eliminarExperienciaSectorProductivoEmpleado(
+        empCod,
+        Number(idEmpleadoExperienciaSectorProductivo)
+      );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Experiencia del sector productivo no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Experiencia del sector productivo eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la experiencia del sector productivo",
+      error: error.message
+    });
+  }
+};
+
+const listarVinculosIndustria = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const vinculosIndustria =
+      await empleadosQueries.listarVinculosIndustriaEmpleado(empCod);
+
+    if (!vinculosIndustria) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Vinculos con la industria obtenidos correctamente",
+      data: vinculosIndustria
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los vinculos con la industria",
+      error: error.message
+    });
+  }
+};
+
+const crearVinculoIndustria = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const vinculoIndustria =
+      await empleadosQueries.crearVinculoIndustriaEmpleado(empCod, payload);
+
+    if (!vinculoIndustria) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Vinculo con la industria guardado correctamente",
+      data: vinculoIndustria
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar el vinculo con la industria",
+      error: error.message
+    });
+  }
+};
+
+const actualizarVinculoIndustria = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoVinculoIndustria } = req.params;
+    const payload = req.body || {};
+
+    const vinculoIndustria =
+      await empleadosQueries.actualizarVinculoIndustriaEmpleado(
+        empCod,
+        Number(idEmpleadoVinculoIndustria),
+        payload
+      );
+
+    if (!vinculoIndustria) {
+      return res.status(404).json({
+        ok: false,
+        message: "Vinculo con la industria no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Vinculo con la industria actualizado correctamente",
+      data: vinculoIndustria
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar el vinculo con la industria",
+      error: error.message
+    });
+  }
+};
+
+const eliminarVinculoIndustria = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoVinculoIndustria } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarVinculoIndustriaEmpleado(
+      empCod,
+      Number(idEmpleadoVinculoIndustria)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Vinculo con la industria no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Vinculo con la industria eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el vinculo con la industria",
+      error: error.message
+    });
+  }
+};
+
+const listarIdiomasEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const idiomas = await empleadosQueries.listarIdiomasEmpleado(empCod);
+
+    if (!idiomas) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Idiomas del empleado obtenidos correctamente",
+      data: idiomas
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los idiomas del empleado",
+      error: error.message
+    });
+  }
+};
+
+const crearIdiomaEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const idioma = await empleadosQueries.crearIdiomaEmpleado(empCod, payload);
+
+    if (!idioma) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Idioma guardado correctamente",
+      data: idioma
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar el idioma",
+      error: error.message
+    });
+  }
+};
+
+const actualizarIdiomaEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoIdioma } = req.params;
+    const payload = req.body || {};
+
+    const idioma = await empleadosQueries.actualizarIdiomaEmpleado(
+      empCod,
+      Number(idEmpleadoIdioma),
+      payload
+    );
+
+    if (!idioma) {
+      return res.status(404).json({
+        ok: false,
+        message: "Idioma no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Idioma actualizado correctamente",
+      data: idioma
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar el idioma",
+      error: error.message
+    });
+  }
+};
+
+const eliminarIdiomaEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoIdioma } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarIdiomaEmpleado(
+      empCod,
+      Number(idEmpleadoIdioma)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Idioma no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Idioma eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el idioma",
+      error: error.message
+    });
+  }
+};
+
+const listarCompetenciasDigitales = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const competenciasDigitales =
+      await empleadosQueries.listarCompetenciasDigitalesEmpleado(empCod);
+
+    if (!competenciasDigitales) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Competencias digitales obtenidas correctamente",
+      data: competenciasDigitales
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las competencias digitales",
+      error: error.message
+    });
+  }
+};
+
+const crearCompetenciaDigital = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const competenciaDigital =
+      await empleadosQueries.crearCompetenciaDigitalEmpleado(empCod, payload);
+
+    if (!competenciaDigital) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Competencia digital guardada correctamente",
+      data: competenciaDigital
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar la competencia digital",
+      error: error.message
+    });
+  }
+};
+
+const actualizarCompetenciaDigital = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCompetenciaDigital } = req.params;
+    const payload = req.body || {};
+
+    const competenciaDigital =
+      await empleadosQueries.actualizarCompetenciaDigitalEmpleado(
+        empCod,
+        Number(idEmpleadoCompetenciaDigital),
+        payload
+      );
+
+    if (!competenciaDigital) {
+      return res.status(404).json({
+        ok: false,
+        message: "Competencia digital no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Competencia digital actualizada correctamente",
+      data: competenciaDigital
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar la competencia digital",
+      error: error.message
+    });
+  }
+};
+
+const eliminarCompetenciaDigital = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCompetenciaDigital } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarCompetenciaDigitalEmpleado(
+      empCod,
+      Number(idEmpleadoCompetenciaDigital)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Competencia digital no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Competencia digital eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la competencia digital",
+      error: error.message
+    });
+  }
+};
+
+const listarMetodologiasActivasEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const metodologiasActivas =
+      await empleadosQueries.listarMetodologiasActivasEmpleado(empCod);
+
+    if (!metodologiasActivas) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Metodologias activas obtenidas correctamente",
+      data: metodologiasActivas
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las metodologias activas",
+      error: error.message
+    });
+  }
+};
+
+const crearMetodologiaActivaEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const metodologiaActiva =
+      await empleadosQueries.crearMetodologiaActivaEmpleado(empCod, payload);
+
+    if (!metodologiaActiva) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Metodologia activa guardada correctamente",
+      data: metodologiaActiva
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar la metodologia activa",
+      error: error.message
+    });
+  }
+};
+
+const actualizarMetodologiaActivaEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoMetodologiaActiva } = req.params;
+    const payload = req.body || {};
+
+    const metodologiaActiva =
+      await empleadosQueries.actualizarMetodologiaActivaEmpleado(
+        empCod,
+        Number(idEmpleadoMetodologiaActiva),
+        payload
+      );
+
+    if (!metodologiaActiva) {
+      return res.status(404).json({
+        ok: false,
+        message: "Metodologia activa no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Metodologia activa actualizada correctamente",
+      data: metodologiaActiva
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar la metodologia activa",
+      error: error.message
+    });
+  }
+};
+
+const eliminarMetodologiaActivaEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoMetodologiaActiva } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarMetodologiaActivaEmpleado(
+      empCod,
+      Number(idEmpleadoMetodologiaActiva)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Metodologia activa no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Metodologia activa eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la metodologia activa",
+      error: error.message
+    });
+  }
+};
+
+const listarPlataformasVirtualesEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const plataformasVirtuales =
+      await empleadosQueries.listarPlataformasVirtualesEmpleado(empCod);
+
+    if (!plataformasVirtuales) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Plataformas virtuales obtenidas correctamente",
+      data: plataformasVirtuales
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las plataformas virtuales",
+      error: error.message
+    });
+  }
+};
+
+const crearPlataformaVirtualEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const plataformaVirtual =
+      await empleadosQueries.crearPlataformaVirtualEmpleado(empCod, payload);
+
+    if (!plataformaVirtual) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Plataforma virtual guardada correctamente",
+      data: plataformaVirtual
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar la plataforma virtual",
+      error: error.message
+    });
+  }
+};
+
+const actualizarPlataformaVirtualEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPlataformaVirtual } = req.params;
+    const payload = req.body || {};
+
+    const plataformaVirtual =
+      await empleadosQueries.actualizarPlataformaVirtualEmpleado(
+        empCod,
+        Number(idEmpleadoPlataformaVirtual),
+        payload
+      );
+
+    if (!plataformaVirtual) {
+      return res.status(404).json({
+        ok: false,
+        message: "Plataforma virtual no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Plataforma virtual actualizada correctamente",
+      data: plataformaVirtual
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar la plataforma virtual",
+      error: error.message
+    });
+  }
+};
+
+const eliminarPlataformaVirtualEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPlataformaVirtual } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarPlataformaVirtualEmpleado(
+      empCod,
+      Number(idEmpleadoPlataformaVirtual)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Plataforma virtual no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Plataforma virtual eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la plataforma virtual",
+      error: error.message
+    });
+  }
+};
+
+const listarPreferenciasDocencia = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const preferenciasDocencia =
+      await empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod);
+
+    if (!preferenciasDocencia) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Preferencias de docencia obtenidas correctamente",
+      data: preferenciasDocencia
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las preferencias de docencia",
+      error: error.message
+    });
+  }
+};
+
+const crearPreferenciaDocencia = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const preferenciaDocencia =
+      await empleadosQueries.crearPreferenciaDocenciaEmpleado(empCod, payload);
+
+    if (!preferenciaDocencia) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Preferencia de docencia guardada correctamente",
+      data: preferenciaDocencia
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar la preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
+const actualizarPreferenciaDocencia = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPreferenciaDocencia } = req.params;
+    const payload = req.body || {};
+
+    const preferenciaDocencia =
+      await empleadosQueries.actualizarPreferenciaDocenciaEmpleado(
+        empCod,
+        Number(idEmpleadoPreferenciaDocencia),
+        payload
+      );
+
+    if (!preferenciaDocencia) {
+      return res.status(404).json({
+        ok: false,
+        message: "Preferencia de docencia no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Preferencia de docencia actualizada correctamente",
+      data: preferenciaDocencia
+    });
+  } catch (error) {
+    const status = error.message.includes("no existe") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar la preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
+const eliminarPreferenciaDocencia = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPreferenciaDocencia } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarPreferenciaDocenciaEmpleado(
+      empCod,
+      Number(idEmpleadoPreferenciaDocencia)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Preferencia de docencia no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Preferencia de docencia eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   obtenerPorCodigo,
   guardarInformacionPersonal,
@@ -1362,5 +2212,33 @@ module.exports = {
   listarProyectosExperiencia,
   crearProyectoExperiencia,
   actualizarProyectoExperiencia,
-  eliminarProyectoExperiencia
+  eliminarProyectoExperiencia,
+  listarExperienciasSectorProductivo,
+  crearExperienciaSectorProductivo,
+  actualizarExperienciaSectorProductivo,
+  eliminarExperienciaSectorProductivo,
+  listarVinculosIndustria,
+  crearVinculoIndustria,
+  actualizarVinculoIndustria,
+  eliminarVinculoIndustria,
+  listarIdiomasEmpleado,
+  crearIdiomaEmpleado,
+  actualizarIdiomaEmpleado,
+  eliminarIdiomaEmpleado,
+  listarCompetenciasDigitales,
+  crearCompetenciaDigital,
+  actualizarCompetenciaDigital,
+  eliminarCompetenciaDigital,
+  listarMetodologiasActivasEmpleado,
+  crearMetodologiaActivaEmpleado,
+  actualizarMetodologiaActivaEmpleado,
+  eliminarMetodologiaActivaEmpleado,
+  listarPlataformasVirtualesEmpleado,
+  crearPlataformaVirtualEmpleado,
+  actualizarPlataformaVirtualEmpleado,
+  eliminarPlataformaVirtualEmpleado,
+  listarPreferenciasDocencia,
+  crearPreferenciaDocencia,
+  actualizarPreferenciaDocencia,
+  eliminarPreferenciaDocencia
 };
