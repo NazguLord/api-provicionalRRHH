@@ -112,6 +112,20 @@ const listarTiposDiplomado = async () => {
   return query(sql);
 };
 
+const listarNivelesExperienciaDocente = async () => {
+  const sql = `
+    SELECT
+      IdNivelExperienciaDocente,
+      NombreNivelExperienciaDocente,
+      Activo
+    FROM TB_CatNivelExperienciaDocente
+    WHERE Activo = 1
+    ORDER BY IdNivelExperienciaDocente ASC
+  `;
+
+  return query(sql);
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -120,5 +134,6 @@ module.exports = {
   listarNivelesIdioma,
   listarGradosAcademicos,
   listarEstadosAcademicos,
-  listarTiposDiplomado
+  listarTiposDiplomado,
+  listarNivelesExperienciaDocente
 };

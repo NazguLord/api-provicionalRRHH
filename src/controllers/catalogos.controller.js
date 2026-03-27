@@ -155,6 +155,25 @@ const listarTiposDiplomado = async (req, res) => {
   }
 };
 
+const listarNivelesExperienciaDocente = async (req, res) => {
+  try {
+    const nivelesExperienciaDocente =
+      await catalogosQueries.listarNivelesExperienciaDocente();
+
+    res.json({
+      ok: true,
+      message: "Niveles de experiencia docente obtenidos correctamente",
+      data: nivelesExperienciaDocente
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los niveles de experiencia docente",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -163,5 +182,6 @@ module.exports = {
   listarNivelesIdioma,
   listarGradosAcademicos,
   listarEstadosAcademicos,
-  listarTiposDiplomado
+  listarTiposDiplomado,
+  listarNivelesExperienciaDocente
 };

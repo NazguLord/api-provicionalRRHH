@@ -12,5 +12,9 @@ router.get("/niveles-idioma", catalogosController.listarNivelesIdioma);
 router.get("/grados-academicos", catalogosController.listarGradosAcademicos);
 router.get("/estados-academicos", catalogosController.listarEstadosAcademicos);
 router.get("/tipos-diplomado", catalogosController.listarTiposDiplomado);
+router.get(
+  "/niveles-experiencia-docente",
+  catalogosController.listarNivelesExperienciaDocente
+);
 
 module.exports = router;

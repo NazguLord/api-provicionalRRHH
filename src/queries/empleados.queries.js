@@ -106,6 +106,71 @@ const normalizarTipoEmpleado = (tipoEmpleado) => {
   return normalizarTexto(tipoEmpleado)?.toUpperCase() || null;
 };
 
+const normalizarListaAsignaturas = (payload = {}) => {
+  const entrada =
+    payload.asignaturas ??
+    payload.Asignaturas ??
+    payload.asignaturasJson ??
+    payload.AsignaturasJson ??
+    [];
+
+  let lista = [];
+
+  if (Array.isArray(entrada)) {
+    lista = entrada;
+  } else if (typeof entrada === "string") {
+    const texto = entrada.trim();
+
+    if (!texto) {
+      lista = [];
+    } else {
+      try {
+        const parseado = JSON.parse(texto);
+        lista = Array.isArray(parseado) ? parseado : [texto];
+      } catch (error) {
+        lista = texto
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    }
+  }
+
+  return lista
+    .map((item) => normalizarTexto(item))
+    .filter(Boolean);
+};
+
+const obtenerNombreConocimiento = (payload = {}) => {
+  return normalizarTexto(
+    payload.nombreConocimiento ??
+      payload.NombreConocimiento ??
+      payload.conocimiento ??
+      payload.Conocimiento ??
+      payload.nombre ??
+      payload.Nombre ??
+      payload.valor ??
+      payload.Valor ??
+      payload.texto ??
+      payload.Texto
+  );
+};
+
+const obtenerNombreHabilidad = (payload = {}) => {
+  return normalizarTexto(
+    payload.nombreHabilidad ??
+      payload.NombreHabilidad ??
+      payload.habilidad ??
+      payload.Habilidad ??
+      payload.nombre ??
+      payload.Nombre ??
+      payload.valor ??
+      payload.Valor ??
+      payload.texto ??
+      payload.Texto
+  );
+};
+
 const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "NumeroIdentidad",
   "PrimerNombre",
@@ -1225,6 +1290,660 @@ const obtenerTipoDiplomadoPorId = async (idTipoDiplomado) => {
   return rows[0] || null;
 };
 
+const obtenerNivelExperienciaDocentePorId = async (idNivelExperienciaDocente) => {
+  if (!idNivelExperienciaDocente) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      IdNivelExperienciaDocente,
+      NombreNivelExperienciaDocente
+    FROM TB_CatNivelExperienciaDocente
+    WHERE IdNivelExperienciaDocente = ?
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [idNivelExperienciaDocente]);
+  return rows[0] || null;
+};
+
+const listarAsignaturasExperienciaDocente = async (idEmpleadoExperienciaDocente) => {
+  const sql = `
+    SELECT
+      IdEmpleadoExperienciaDocenteAsignatura,
+      IdEmpleadoExperienciaDocente,
+      NombreAsignatura,
+      Activo,
+      FechaCreacion,
+      FechaActualizacion
+    FROM TB_EmpleadoExperienciaDocenteAsignatura
+    WHERE IdEmpleadoExperienciaDocente = ?
+      AND Activo = 1
+    ORDER BY IdEmpleadoExperienciaDocenteAsignatura ASC
+  `;
+
+  return query(sql, [idEmpleadoExperienciaDocente]);
+};
+
+const reemplazarAsignaturasExperienciaDocente = async (
+  idEmpleadoExperienciaDocente,
+  asignaturas = []
+) => {
+  await query(
+    `
+      UPDATE TB_EmpleadoExperienciaDocenteAsignatura
+      SET Activo = 0
+      WHERE IdEmpleadoExperienciaDocente = ?
+    `,
+    [idEmpleadoExperienciaDocente]
+  );
+
+  for (const asignatura of asignaturas) {
+    await query(
+      `
+        INSERT INTO TB_EmpleadoExperienciaDocenteAsignatura (
+          IdEmpleadoExperienciaDocente,
+          NombreAsignatura,
+          Activo
+        ) VALUES (?, ?, 1)
+      `,
+      [idEmpleadoExperienciaDocente, asignatura]
+    );
+  }
+};
+
+const listarExperienciasDocentesEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const experiencias = await query(
+    `
+      SELECT
+        eed.IdEmpleadoExperienciaDocente,
+        eed.CodigoEmpleado,
+        eed.IdNivelExperienciaDocente,
+        eed.AniosExperiencia,
+        eed.Activo,
+        eed.FechaCreacion,
+        eed.FechaActualizacion,
+        cned.NombreNivelExperienciaDocente
+      FROM TB_EmpleadoExperienciaDocente eed
+      LEFT JOIN TB_CatNivelExperienciaDocente cned
+        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
+      WHERE eed.CodigoEmpleado = ?
+        AND eed.Activo = 1
+      ORDER BY eed.IdEmpleadoExperienciaDocente DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  const experienciasConAsignaturas = [];
+
+  for (const experiencia of experiencias) {
+    const asignaturas = await listarAsignaturasExperienciaDocente(
+      experiencia.IdEmpleadoExperienciaDocente
+    );
+
+    experienciasConAsignaturas.push({
+      ...experiencia,
+      Asignaturas: asignaturas
+    });
+  }
+
+  return experienciasConAsignaturas;
+};
+
+const crearExperienciaDocenteEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const idNivelExperienciaDocente =
+    payload.idNivelExperienciaDocente ??
+    payload.IdNivelExperienciaDocente ??
+    null;
+  const nivel = await obtenerNivelExperienciaDocentePorId(
+    idNivelExperienciaDocente
+  );
+
+  if (idNivelExperienciaDocente && !nivel) {
+    throw new Error("El nivel de experiencia docente seleccionado no existe");
+  }
+
+  const asignaturas = normalizarListaAsignaturas(payload);
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoExperienciaDocente (
+        IdEmpleado,
+        CodigoEmpleado,
+        IdNivelExperienciaDocente,
+        AniosExperiencia,
+        Activo
+      ) VALUES (?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      idNivelExperienciaDocente,
+      payload.aniosExperiencia ?? payload.AniosExperiencia ?? null
+    ]
+  );
+
+  await reemplazarAsignaturasExperienciaDocente(result.insertId, asignaturas);
+
+  const rows = await query(
+    `
+      SELECT
+        eed.IdEmpleadoExperienciaDocente,
+        eed.CodigoEmpleado,
+        eed.IdNivelExperienciaDocente,
+        eed.AniosExperiencia,
+        eed.Activo,
+        eed.FechaCreacion,
+        eed.FechaActualizacion,
+        cned.NombreNivelExperienciaDocente
+      FROM TB_EmpleadoExperienciaDocente eed
+      LEFT JOIN TB_CatNivelExperienciaDocente cned
+        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
+      WHERE eed.IdEmpleadoExperienciaDocente = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  const experiencia = rows[0] || null;
+
+  if (!experiencia) {
+    return null;
+  }
+
+  return {
+    ...experiencia,
+    Asignaturas: await listarAsignaturasExperienciaDocente(result.insertId)
+  };
+};
+
+const actualizarExperienciaDocenteEmpleado = async (
+  empCod,
+  idEmpleadoExperienciaDocente,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoExperienciaDocente
+      WHERE IdEmpleadoExperienciaDocente = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoExperienciaDocente, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const idNivelExperienciaDocente =
+    payload.idNivelExperienciaDocente ??
+    payload.IdNivelExperienciaDocente ??
+    actual.IdNivelExperienciaDocente;
+  const nivel = await obtenerNivelExperienciaDocentePorId(
+    idNivelExperienciaDocente
+  );
+
+  if (idNivelExperienciaDocente && !nivel) {
+    throw new Error("El nivel de experiencia docente seleccionado no existe");
+  }
+
+  await query(
+    `
+      UPDATE TB_EmpleadoExperienciaDocente
+      SET
+        IdNivelExperienciaDocente = ?,
+        AniosExperiencia = ?
+      WHERE IdEmpleadoExperienciaDocente = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      idNivelExperienciaDocente,
+      payload.aniosExperiencia ??
+        payload.AniosExperiencia ??
+        actual.AniosExperiencia,
+      idEmpleadoExperienciaDocente,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  if (
+    payload.asignaturas !== undefined ||
+    payload.Asignaturas !== undefined ||
+    payload.asignaturasJson !== undefined ||
+    payload.AsignaturasJson !== undefined
+  ) {
+    await reemplazarAsignaturasExperienciaDocente(
+      idEmpleadoExperienciaDocente,
+      normalizarListaAsignaturas(payload)
+    );
+  }
+
+  const rows = await query(
+    `
+      SELECT
+        eed.IdEmpleadoExperienciaDocente,
+        eed.CodigoEmpleado,
+        eed.IdNivelExperienciaDocente,
+        eed.AniosExperiencia,
+        eed.Activo,
+        eed.FechaCreacion,
+        eed.FechaActualizacion,
+        cned.NombreNivelExperienciaDocente
+      FROM TB_EmpleadoExperienciaDocente eed
+      LEFT JOIN TB_CatNivelExperienciaDocente cned
+        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
+      WHERE eed.IdEmpleadoExperienciaDocente = ?
+      LIMIT 1
+    `,
+    [idEmpleadoExperienciaDocente]
+  );
+
+  const experiencia = rows[0] || null;
+
+  if (!experiencia) {
+    return null;
+  }
+
+  return {
+    ...experiencia,
+    Asignaturas: await listarAsignaturasExperienciaDocente(
+      idEmpleadoExperienciaDocente
+    )
+  };
+};
+
+const eliminarExperienciaDocenteEmpleado = async (
+  empCod,
+  idEmpleadoExperienciaDocente
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoExperienciaDocente
+      SET Activo = 0
+      WHERE IdEmpleadoExperienciaDocente = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoExperienciaDocente, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
+const listarLogrosRelevantesEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        IdEmpleadoLogroRelevante,
+        CodigoEmpleado,
+        TipoLogro,
+        Anio,
+        Descripcion,
+        RutaDocumentoAdjunto,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoLogroRelevante
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY IdEmpleadoLogroRelevante DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearLogroRelevanteEmpleado = async (empCod, payload = {}, archivo = null) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rutaDocumentoAdjunto = archivo
+    ? `/data/empleados/${empCod}/experiencia-academica-logros/${archivo.filename}`
+    : null;
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoLogroRelevante (
+        IdEmpleado,
+        CodigoEmpleado,
+        TipoLogro,
+        Anio,
+        Descripcion,
+        RutaDocumentoAdjunto,
+        Activo
+      ) VALUES (?, ?, ?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      normalizarTexto(payload.tipoLogro ?? payload.TipoLogro),
+      payload.anio ?? payload.Anio ?? null,
+      normalizarTexto(payload.descripcion ?? payload.Descripcion),
+      rutaDocumentoAdjunto
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoLogroRelevante,
+        CodigoEmpleado,
+        TipoLogro,
+        Anio,
+        Descripcion,
+        RutaDocumentoAdjunto,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoLogroRelevante
+      WHERE IdEmpleadoLogroRelevante = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarLogroRelevanteEmpleado = async (
+  empCod,
+  idEmpleadoLogroRelevante,
+  payload = {},
+  archivo = null
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoLogroRelevante
+      WHERE IdEmpleadoLogroRelevante = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoLogroRelevante, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const rutaDocumentoAdjunto = archivo
+    ? `/data/empleados/${empCod}/experiencia-academica-logros/${archivo.filename}`
+    : actual.RutaDocumentoAdjunto;
+
+  await query(
+    `
+      UPDATE TB_EmpleadoLogroRelevante
+      SET
+        TipoLogro = ?,
+        Anio = ?,
+        Descripcion = ?,
+        RutaDocumentoAdjunto = ?
+      WHERE IdEmpleadoLogroRelevante = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      normalizarTexto(payload.tipoLogro ?? payload.TipoLogro) || actual.TipoLogro,
+      payload.anio ?? payload.Anio ?? actual.Anio ?? null,
+      normalizarTexto(payload.descripcion ?? payload.Descripcion) ||
+        actual.Descripcion,
+      rutaDocumentoAdjunto,
+      idEmpleadoLogroRelevante,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoLogroRelevante,
+        CodigoEmpleado,
+        TipoLogro,
+        Anio,
+        Descripcion,
+        RutaDocumentoAdjunto,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoLogroRelevante
+      WHERE IdEmpleadoLogroRelevante = ?
+      LIMIT 1
+    `,
+    [idEmpleadoLogroRelevante]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarLogroRelevanteEmpleado = async (empCod, idEmpleadoLogroRelevante) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoLogroRelevante
+      SET Activo = 0
+      WHERE IdEmpleadoLogroRelevante = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoLogroRelevante, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
+const listarDiseniosCurricularesEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        IdEmpleadoDisenioCurricular,
+        CodigoEmpleado,
+        NombrePlan,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoDisenioCurricular
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY IdEmpleadoDisenioCurricular DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearDisenioCurricularEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoDisenioCurricular (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombrePlan,
+        Descripcion,
+        Activo
+      ) VALUES (?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      normalizarTexto(payload.nombrePlan ?? payload.NombrePlan),
+      normalizarTexto(payload.descripcion ?? payload.Descripcion)
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoDisenioCurricular,
+        CodigoEmpleado,
+        NombrePlan,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoDisenioCurricular
+      WHERE IdEmpleadoDisenioCurricular = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarDisenioCurricularEmpleado = async (
+  empCod,
+  idEmpleadoDisenioCurricular,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoDisenioCurricular
+      WHERE IdEmpleadoDisenioCurricular = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoDisenioCurricular, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  await query(
+    `
+      UPDATE TB_EmpleadoDisenioCurricular
+      SET
+        NombrePlan = ?,
+        Descripcion = ?
+      WHERE IdEmpleadoDisenioCurricular = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      normalizarTexto(payload.nombrePlan ?? payload.NombrePlan) || actual.NombrePlan,
+      normalizarTexto(payload.descripcion ?? payload.Descripcion) ||
+        actual.Descripcion,
+      idEmpleadoDisenioCurricular,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoDisenioCurricular,
+        CodigoEmpleado,
+        NombrePlan,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoDisenioCurricular
+      WHERE IdEmpleadoDisenioCurricular = ?
+      LIMIT 1
+    `,
+    [idEmpleadoDisenioCurricular]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarDisenioCurricularEmpleado = async (
+  empCod,
+  idEmpleadoDisenioCurricular
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoDisenioCurricular
+      SET Activo = 0
+      WHERE IdEmpleadoDisenioCurricular = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoDisenioCurricular, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
 const listarExperienciasProfesionalesEmpleado = async (empCod) => {
   const empleado = await asegurarEmpleadoInicializado(empCod);
 
@@ -1594,6 +2313,482 @@ const eliminarDiplomadoEmpleado = async (empCod, idEmpleadoDiplomado) => {
   return result.affectedRows > 0;
 };
 
+const listarConocimientosClaveEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        IdEmpleadoConocimientoClave,
+        CodigoEmpleado,
+        NombreConocimiento,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoConocimientoClave
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY IdEmpleadoConocimientoClave DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearConocimientoClaveEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const nombreConocimiento = obtenerNombreConocimiento(payload);
+
+  if (!nombreConocimiento) {
+    throw new Error("Debes enviar el nombre del conocimiento");
+  }
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoConocimientoClave (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombreConocimiento,
+        Activo
+      ) VALUES (?, ?, ?, 1)
+    `,
+    [empleado.IdEmpleado, empleado.CodigoEmpleado, nombreConocimiento]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoConocimientoClave,
+        CodigoEmpleado,
+        NombreConocimiento,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoConocimientoClave
+      WHERE IdEmpleadoConocimientoClave = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarConocimientoClaveEmpleado = async (
+  empCod,
+  idEmpleadoConocimientoClave,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoConocimientoClave
+      WHERE IdEmpleadoConocimientoClave = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoConocimientoClave, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const nombreConocimiento = obtenerNombreConocimiento(payload);
+
+  await query(
+    `
+      UPDATE TB_EmpleadoConocimientoClave
+      SET NombreConocimiento = ?
+      WHERE IdEmpleadoConocimientoClave = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      nombreConocimiento || actual.NombreConocimiento,
+      idEmpleadoConocimientoClave,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoConocimientoClave,
+        CodigoEmpleado,
+        NombreConocimiento,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoConocimientoClave
+      WHERE IdEmpleadoConocimientoClave = ?
+      LIMIT 1
+    `,
+    [idEmpleadoConocimientoClave]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarConocimientoClaveEmpleado = async (
+  empCod,
+  idEmpleadoConocimientoClave
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoConocimientoClave
+      SET Activo = 0
+      WHERE IdEmpleadoConocimientoClave = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoConocimientoClave, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
+const listarHabilidadesRelevantesEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        IdEmpleadoHabilidadRelevante,
+        CodigoEmpleado,
+        NombreHabilidad,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoHabilidadRelevante
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY IdEmpleadoHabilidadRelevante DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearHabilidadRelevanteEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const nombreHabilidad = obtenerNombreHabilidad(payload);
+
+  if (!nombreHabilidad) {
+    throw new Error("Debes enviar el nombre de la habilidad");
+  }
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoHabilidadRelevante (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombreHabilidad,
+        Activo
+      ) VALUES (?, ?, ?, 1)
+    `,
+    [empleado.IdEmpleado, empleado.CodigoEmpleado, nombreHabilidad]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoHabilidadRelevante,
+        CodigoEmpleado,
+        NombreHabilidad,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoHabilidadRelevante
+      WHERE IdEmpleadoHabilidadRelevante = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarHabilidadRelevanteEmpleado = async (
+  empCod,
+  idEmpleadoHabilidadRelevante,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoHabilidadRelevante
+      WHERE IdEmpleadoHabilidadRelevante = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoHabilidadRelevante, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const nombreHabilidad = obtenerNombreHabilidad(payload);
+
+  await query(
+    `
+      UPDATE TB_EmpleadoHabilidadRelevante
+      SET NombreHabilidad = ?
+      WHERE IdEmpleadoHabilidadRelevante = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      nombreHabilidad || actual.NombreHabilidad,
+      idEmpleadoHabilidadRelevante,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoHabilidadRelevante,
+        CodigoEmpleado,
+        NombreHabilidad,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoHabilidadRelevante
+      WHERE IdEmpleadoHabilidadRelevante = ?
+      LIMIT 1
+    `,
+    [idEmpleadoHabilidadRelevante]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarHabilidadRelevanteEmpleado = async (
+  empCod,
+  idEmpleadoHabilidadRelevante
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoHabilidadRelevante
+      SET Activo = 0
+      WHERE IdEmpleadoHabilidadRelevante = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoHabilidadRelevante, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
+const listarProyectosExperienciaEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        IdEmpleadoProyectoExperiencia,
+        CodigoEmpleado,
+        Titulo,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoProyectoExperiencia
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY IdEmpleadoProyectoExperiencia DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearProyectoExperienciaEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoProyectoExperiencia (
+        IdEmpleado,
+        CodigoEmpleado,
+        Titulo,
+        Descripcion,
+        Activo
+      ) VALUES (?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      normalizarTexto(payload.titulo ?? payload.Titulo),
+      normalizarTexto(payload.descripcion ?? payload.Descripcion)
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoProyectoExperiencia,
+        CodigoEmpleado,
+        Titulo,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoProyectoExperiencia
+      WHERE IdEmpleadoProyectoExperiencia = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarProyectoExperienciaEmpleado = async (
+  empCod,
+  idEmpleadoProyectoExperiencia,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoProyectoExperiencia
+      WHERE IdEmpleadoProyectoExperiencia = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoProyectoExperiencia, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  await query(
+    `
+      UPDATE TB_EmpleadoProyectoExperiencia
+      SET
+        Titulo = ?,
+        Descripcion = ?
+      WHERE IdEmpleadoProyectoExperiencia = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      normalizarTexto(payload.titulo ?? payload.Titulo) || actual.Titulo,
+      normalizarTexto(payload.descripcion ?? payload.Descripcion) ||
+        actual.Descripcion,
+      idEmpleadoProyectoExperiencia,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoProyectoExperiencia,
+        CodigoEmpleado,
+        Titulo,
+        Descripcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoProyectoExperiencia
+      WHERE IdEmpleadoProyectoExperiencia = ?
+      LIMIT 1
+    `,
+    [idEmpleadoProyectoExperiencia]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarProyectoExperienciaEmpleado = async (
+  empCod,
+  idEmpleadoProyectoExperiencia
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoProyectoExperiencia
+      SET Activo = 0
+      WHERE IdEmpleadoProyectoExperiencia = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoProyectoExperiencia, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
 module.exports = {
   obtenerPorCodigo,
   obtenerEstadoActualizacionEmpleado,
@@ -1613,5 +2808,29 @@ module.exports = {
   listarDiplomadosEmpleado,
   crearDiplomadoEmpleado,
   actualizarDiplomadoEmpleado,
-  eliminarDiplomadoEmpleado
+  eliminarDiplomadoEmpleado,
+  listarExperienciasDocentesEmpleado,
+  crearExperienciaDocenteEmpleado,
+  actualizarExperienciaDocenteEmpleado,
+  eliminarExperienciaDocenteEmpleado,
+  listarLogrosRelevantesEmpleado,
+  crearLogroRelevanteEmpleado,
+  actualizarLogroRelevanteEmpleado,
+  eliminarLogroRelevanteEmpleado,
+  listarDiseniosCurricularesEmpleado,
+  crearDisenioCurricularEmpleado,
+  actualizarDisenioCurricularEmpleado,
+  eliminarDisenioCurricularEmpleado,
+  listarConocimientosClaveEmpleado,
+  crearConocimientoClaveEmpleado,
+  actualizarConocimientoClaveEmpleado,
+  eliminarConocimientoClaveEmpleado,
+  listarHabilidadesRelevantesEmpleado,
+  crearHabilidadRelevanteEmpleado,
+  actualizarHabilidadRelevanteEmpleado,
+  eliminarHabilidadRelevanteEmpleado,
+  listarProyectosExperienciaEmpleado,
+  crearProyectoExperienciaEmpleado,
+  actualizarProyectoExperienciaEmpleado,
+  eliminarProyectoExperienciaEmpleado
 };

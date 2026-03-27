@@ -4,7 +4,8 @@ const empleadosController = require("../controllers/empleados.controller");
 const {
   uploadEmpleadoDocumento,
   uploadGradoAcademicoAdjunto,
-  uploadDiplomadoAdjunto
+  uploadDiplomadoAdjunto,
+  uploadLogroRelevanteAdjunto
 } = require("../middlewares/upload.middleware");
 
 const router = express.Router();
@@ -75,6 +76,101 @@ router.patch(
 router.delete(
   "/:empCod/diplomados/:idEmpleadoDiplomado",
   empleadosController.eliminarDiplomado
+);
+router.get(
+  "/:empCod/experiencias-docentes",
+  empleadosController.listarExperienciasDocentes
+);
+router.post(
+  "/:empCod/experiencias-docentes",
+  empleadosController.crearExperienciaDocente
+);
+router.patch(
+  "/:empCod/experiencias-docentes/:idEmpleadoExperienciaDocente",
+  empleadosController.actualizarExperienciaDocente
+);
+router.delete(
+  "/:empCod/experiencias-docentes/:idEmpleadoExperienciaDocente",
+  empleadosController.eliminarExperienciaDocente
+);
+router.get("/:empCod/logros-relevantes", empleadosController.listarLogrosRelevantes);
+router.post(
+  "/:empCod/logros-relevantes",
+  uploadLogroRelevanteAdjunto.single("archivo"),
+  empleadosController.crearLogroRelevante
+);
+router.patch(
+  "/:empCod/logros-relevantes/:idEmpleadoLogroRelevante",
+  uploadLogroRelevanteAdjunto.single("archivo"),
+  empleadosController.actualizarLogroRelevante
+);
+router.delete(
+  "/:empCod/logros-relevantes/:idEmpleadoLogroRelevante",
+  empleadosController.eliminarLogroRelevante
+);
+router.get(
+  "/:empCod/disenios-curriculares",
+  empleadosController.listarDiseniosCurriculares
+);
+router.post(
+  "/:empCod/disenios-curriculares",
+  empleadosController.crearDisenioCurricular
+);
+router.patch(
+  "/:empCod/disenios-curriculares/:idEmpleadoDisenioCurricular",
+  empleadosController.actualizarDisenioCurricular
+);
+router.delete(
+  "/:empCod/disenios-curriculares/:idEmpleadoDisenioCurricular",
+  empleadosController.eliminarDisenioCurricular
+);
+router.get(
+  "/:empCod/conocimientos-clave",
+  empleadosController.listarConocimientosClave
+);
+router.post(
+  "/:empCod/conocimientos-clave",
+  empleadosController.crearConocimientoClave
+);
+router.patch(
+  "/:empCod/conocimientos-clave/:idEmpleadoConocimientoClave",
+  empleadosController.actualizarConocimientoClave
+);
+router.delete(
+  "/:empCod/conocimientos-clave/:idEmpleadoConocimientoClave",
+  empleadosController.eliminarConocimientoClave
+);
+router.get(
+  "/:empCod/habilidades-relevantes",
+  empleadosController.listarHabilidadesRelevantes
+);
+router.post(
+  "/:empCod/habilidades-relevantes",
+  empleadosController.crearHabilidadRelevante
+);
+router.patch(
+  "/:empCod/habilidades-relevantes/:idEmpleadoHabilidadRelevante",
+  empleadosController.actualizarHabilidadRelevante
+);
+router.delete(
+  "/:empCod/habilidades-relevantes/:idEmpleadoHabilidadRelevante",
+  empleadosController.eliminarHabilidadRelevante
+);
+router.get(
+  "/:empCod/proyectos-experiencia",
+  empleadosController.listarProyectosExperiencia
+);
+router.post(
+  "/:empCod/proyectos-experiencia",
+  empleadosController.crearProyectoExperiencia
+);
+router.patch(
+  "/:empCod/proyectos-experiencia/:idEmpleadoProyectoExperiencia",
+  empleadosController.actualizarProyectoExperiencia
+);
+router.delete(
+  "/:empCod/proyectos-experiencia/:idEmpleadoProyectoExperiencia",
+  empleadosController.eliminarProyectoExperiencia
 );
 router.get("/:empCod", empleadosController.obtenerPorCodigo);
 
