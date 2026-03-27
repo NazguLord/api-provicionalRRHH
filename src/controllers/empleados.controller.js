@@ -27,6 +27,31 @@ const obtenerPorCodigo = async (req, res) => {
   }
 };
 
+const listarColaboradores = async (req, res) => {
+  try {
+    const { page, limit, search } = req.query;
+
+    const resultado = await empleadosQueries.listarColaboradores({
+      page,
+      limit,
+      search
+    });
+
+    res.json({
+      ok: true,
+      message: "Colaboradores obtenidos correctamente",
+      data: resultado.data,
+      pagination: resultado.pagination
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener el listado de colaboradores",
+      error: error.message
+    });
+  }
+};
+
 const guardarInformacionPersonal = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -2171,6 +2196,7 @@ const eliminarPreferenciaDocencia = async (req, res) => {
 
 module.exports = {
   obtenerPorCodigo,
+  listarColaboradores,
   guardarInformacionPersonal,
   obtenerEstadoActualizacion,
   obtenerFormularioEmpleado,

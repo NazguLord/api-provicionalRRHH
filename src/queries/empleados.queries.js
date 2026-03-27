@@ -269,10 +269,94 @@ const obtenerPorCodigo = async (empCod) => {
   return rows[0] || null;
 };
 
+const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {}) => {
+  const pageNumber = Number(page) > 0 ? Number(page) : 1;
+  const limitNumber = Number(limit) > 0 ? Number(limit) : 10;
+  const offset = (pageNumber - 1) * limitNumber;
+  const textoBusqueda = normalizarTexto(search);
+
+  const where = ["e.Activo = 1"];
+  const params = [];
+
+  if (textoBusqueda) {
+    where.push(`(
+      CONCAT_WS(
+        ' ',
+        e.PrimerNombre,
+        e.SegundoNombre,
+        e.TercerNombre,
+        e.PrimerApellido,
+        e.SegundoApellido
+      ) LIKE ?
+      OR e.CodigoEmpleado LIKE ?
+      OR e.NumeroIdentidad LIKE ?
+    )`);
+    params.push(
+      `%${textoBusqueda}%`,
+      `%${textoBusqueda}%`,
+      `%${textoBusqueda}%`
+    );
+  }
+
+  const whereSql = where.join(" AND ");
+
+  const sqlDatos = `
+    SELECT
+      e.IdEmpleado,
+      e.CodigoEmpleado,
+      e.NumeroIdentidad,
+      e.PrimerNombre,
+      e.SegundoNombre,
+      e.TercerNombre,
+      e.PrimerApellido,
+      e.SegundoApellido,
+      CONCAT_WS(
+        ' ',
+        e.PrimerNombre,
+        e.SegundoNombre,
+        e.TercerNombre,
+        e.PrimerApellido,
+        e.SegundoApellido
+      ) AS NombreCompleto,
+      e.IdTipoEmpleado,
+      cte.NombreTipoEmpleado
+    FROM TB_Empleados e
+    LEFT JOIN TB_CatTipoEmpleado cte
+      ON cte.IdTipoEmpleado = e.IdTipoEmpleado
+    WHERE ${whereSql}
+    ORDER BY NombreCompleto ASC
+    LIMIT ?
+    OFFSET ?
+  `;
+
+  const sqlTotal = `
+    SELECT COUNT(*) AS total
+    FROM TB_Empleados e
+    WHERE ${whereSql}
+  `;
+
+  const [data, totalRows] = await Promise.all([
+    query(sqlDatos, [...params, limitNumber, offset]),
+    query(sqlTotal, params)
+  ]);
+
+  const total = Number(totalRows[0]?.total || 0);
+
+  return {
+    data,
+    pagination: {
+      page: pageNumber,
+      limit: limitNumber,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / limitNumber)
+    }
+  };
+};
+
 const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
   const tipoEmpleadoNormalizado = normalizarTipoEmpleado(tipoEmpleado);
 
-  let sql = `
+  const sqlAdministrativo = `
     SELECT
       CASE
         WHEN EXISTS (
@@ -284,7 +368,16 @@ const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
               SELECT 1
               FROM TB_EmpleadoGradoAcademico g
               WHERE g.CodigoEmpleado = e.CodigoEmpleado
-                AND g.Activo = 1
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoExperienciaProfesional ex
+              WHERE ex.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoDiplomado d
+              WHERE d.CodigoEmpleado = e.CodigoEmpleado
             )
         )
         THEN 'Actualizado'
@@ -292,30 +385,108 @@ const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
       END AS EstadoActualizacion
   `;
 
+  const sqlDocente = `
+    SELECT
+      CASE
+        WHEN EXISTS (
+          SELECT 1
+          FROM TB_Empleados e
+          WHERE e.CodigoEmpleado = ?
+            AND e.Activo = 1
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoGradoAcademico g
+              WHERE g.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoExperienciaProfesional ex
+              WHERE ex.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoDiplomado d
+              WHERE d.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoExperienciaDocente ed
+              WHERE ed.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoLogroRelevante lr
+              WHERE lr.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoDisenioCurricular dc
+              WHERE dc.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoConocimientoClave cc
+              WHERE cc.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoHabilidadRelevante hr
+              WHERE hr.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoProyectoExperiencia pe
+              WHERE pe.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoExperienciaSectorProductivo esp
+              WHERE esp.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoVinculoIndustria vi
+              WHERE vi.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoIdioma i
+              WHERE i.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoCompetenciaDigital cd
+              WHERE cd.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoMetodologiaActiva ma
+              WHERE ma.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoPlataformaVirtual pv
+              WHERE pv.CodigoEmpleado = e.CodigoEmpleado
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM TB_EmpleadoPreferenciaDocencia pd
+              WHERE pd.CodigoEmpleado = e.CodigoEmpleado
+            )
+        )
+        THEN 'Actualizado'
+        ELSE 'Pendiente'
+      END AS EstadoActualizacion
+  `;
+
+  let sql = sqlAdministrativo;
+
   if (
-    tipoEmpleadoNormalizado === "ADMINISTRATIVO" ||
+    tipoEmpleadoNormalizado === "DOCENTE" ||
     tipoEmpleadoNormalizado === "ADMINISTRATIVO-DOCENTE" ||
-    tipoEmpleadoNormalizado === "DOCENTE"
+    tipoEmpleadoNormalizado === "DOCENTE-ADMINISTRATIVO"
   ) {
-    sql = `
-      SELECT
-        CASE
-          WHEN EXISTS (
-            SELECT 1
-            FROM TB_Empleados e
-            WHERE e.CodigoEmpleado = ?
-              AND e.Activo = 1
-              AND EXISTS (
-                SELECT 1
-                FROM TB_EmpleadoGradoAcademico g
-                WHERE g.CodigoEmpleado = e.CodigoEmpleado
-                  AND g.Activo = 1
-              )
-          )
-          THEN 'Actualizado'
-          ELSE 'Pendiente'
-        END AS EstadoActualizacion
-    `;
+    sql = sqlDocente;
   }
 
   const rows = await query(sql, [empCod]);
@@ -4312,6 +4483,7 @@ const eliminarPreferenciaDocenciaEmpleado = async (
 
 module.exports = {
   obtenerPorCodigo,
+  listarColaboradores,
   obtenerEstadoActualizacionEmpleado,
   guardarInformacionPersonalDesdeLegacy,
   obtenerFormularioEmpleado,
