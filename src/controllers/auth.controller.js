@@ -1,11 +1,7 @@
-const authQueries = require("../queries/auth.queries");
-
 const login = async (req, res) => {
-  const resultado = await authQueries.login(req.body);
-
-  res.json({
-    message: "Endpoint login base",
-    data: resultado
+  res.status(501).json({
+    ok: false,
+    message: "Login no habilitado en este momento. Usa el token configurado en el frontend."
   });
 };
 

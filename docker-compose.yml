@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  api-provicionalrrhh:
+    build: .
+    container_name: api-provicionalRRHH
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    volumes:
+      - /var/www/html/api-provicionalRRHH/data:/app/data
+    restart: always

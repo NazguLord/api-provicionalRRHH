@@ -20,6 +20,7 @@ router.get(
   empleadosController.obtenerEstadoActualizacion
 );
 router.get("/:empCod/formulario", empleadosController.obtenerFormularioEmpleado);
+router.get("/:empCod/expediente", empleadosController.obtenerExpedienteEmpleado);
 router.patch(
   "/:empCod/informacion-personal",
   empleadosController.actualizarInformacionPersonal

@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { probarConexion } = require("../config/db");
+const authMiddleware = require("../middlewares/auth.middleware");
 const authRoutes = require("./auth.routes");
 const catalogosRoutes = require("./catalogos.routes");
 const empleadosRoutes = require("./empleados.routes");
@@ -33,8 +34,8 @@ router.get("/db-test", async (req, res) => {
 });
 
 router.use("/auth", authRoutes);
-router.use("/catalogos", catalogosRoutes);
-router.use("/empleados", empleadosRoutes);
-router.use("/usuarios", usuariosRoutes);
+router.use("/catalogos", authMiddleware, catalogosRoutes);
+router.use("/empleados", authMiddleware, empleadosRoutes);
+router.use("/usuarios", authMiddleware, usuariosRoutes);
 
 module.exports = router;

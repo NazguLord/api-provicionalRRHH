@@ -1,5 +1,26 @@
 const empleadosQueries = require("../queries/empleados.queries");
 
+const construirUrlArchivo = (req, ruta) => {
+  if (!ruta) {
+    return null;
+  }
+
+  return `${req.protocol}://${req.get("host")}${ruta}`;
+};
+
+const mapearArchivo = (req, nombre, ruta, extra = {}) => {
+  if (!ruta) {
+    return null;
+  }
+
+  return {
+    nombre,
+    ruta,
+    url: construirUrlArchivo(req, ruta),
+    ...extra
+  };
+};
+
 const obtenerPorCodigo = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -108,6 +129,137 @@ const obtenerFormularioEmpleado = async (req, res) => {
     res.status(500).json({
       ok: false,
       message: "Error al obtener el formulario del empleado",
+      error: error.message
+    });
+  }
+};
+
+const obtenerExpedienteEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const [
+      informacionPersonal,
+      gradosAcademicos,
+      experienciasProfesionales,
+      diplomados,
+      experienciasDocentes,
+      logrosRelevantes,
+      diseniosCurriculares,
+      conocimientosClave,
+      habilidadesRelevantes,
+      proyectosExperiencia,
+      experienciasSectorProductivo,
+      vinculosIndustria,
+      idiomas,
+      competenciasDigitales,
+      metodologiasActivas,
+      plataformasVirtuales,
+      preferenciasDocencia
+    ] = await Promise.all([
+      empleadosQueries.obtenerFormularioEmpleado(empCod),
+      empleadosQueries.listarGradosAcademicosEmpleado(empCod),
+      empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod),
+      empleadosQueries.listarDiplomadosEmpleado(empCod),
+      empleadosQueries.listarExperienciasDocentesEmpleado(empCod),
+      empleadosQueries.listarLogrosRelevantesEmpleado(empCod),
+      empleadosQueries.listarDiseniosCurricularesEmpleado(empCod),
+      empleadosQueries.listarConocimientosClaveEmpleado(empCod),
+      empleadosQueries.listarHabilidadesRelevantesEmpleado(empCod),
+      empleadosQueries.listarProyectosExperienciaEmpleado(empCod),
+      empleadosQueries.listarExperienciasSectorProductivoEmpleado(empCod),
+      empleadosQueries.listarVinculosIndustriaEmpleado(empCod),
+      empleadosQueries.listarIdiomasEmpleado(empCod),
+      empleadosQueries.listarCompetenciasDigitalesEmpleado(empCod),
+      empleadosQueries.listarMetodologiasActivasEmpleado(empCod),
+      empleadosQueries.listarPlataformasVirtualesEmpleado(empCod),
+      empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod)
+    ]);
+
+    if (!informacionPersonal) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    const archivos = [
+      mapearArchivo(
+        req,
+        "imagenPerfil",
+        informacionPersonal.RutaImagenPerfil
+      ),
+      mapearArchivo(req, "hojaVida", informacionPersonal.RutaHojaVida),
+      mapearArchivo(
+        req,
+        "documentoIdentidad",
+        informacionPersonal.RutaDocumentoIdentidad
+      ),
+      mapearArchivo(
+        req,
+        "documentoColegiacion",
+        informacionPersonal.RutaDocumentoColegiacion
+      ),
+      ...(gradosAcademicos || []).flatMap((item) =>
+        item.RutaDocumentoAdjunto
+          ? [
+              mapearArchivo(req, "gradoAcademicoAdjunto", item.RutaDocumentoAdjunto, {
+                id: item.IdEmpleadoGradoAcademico,
+                titulo: item.Titulo ?? null
+              })
+            ]
+          : []
+      ),
+      ...(diplomados || []).flatMap((item) =>
+        item.RutaDocumentoAdjunto
+          ? [
+              mapearArchivo(req, "diplomadoAdjunto", item.RutaDocumentoAdjunto, {
+                id: item.IdEmpleadoDiplomado,
+                titulo: item.NombreDiplomado ?? null
+              })
+            ]
+          : []
+      ),
+      ...(logrosRelevantes || []).flatMap((item) =>
+        item.RutaDocumentoAdjunto
+          ? [
+              mapearArchivo(req, "logroRelevanteAdjunto", item.RutaDocumentoAdjunto, {
+                id: item.IdEmpleadoLogroRelevante,
+                titulo: item.LogroRelevante ?? null
+              })
+            ]
+          : []
+      )
+    ].filter(Boolean);
+
+    res.json({
+      ok: true,
+      message: "Expediente del empleado obtenido correctamente",
+      data: {
+        informacionPersonal,
+        gradosAcademicos: gradosAcademicos || [],
+        experienciasProfesionales: experienciasProfesionales || [],
+        diplomados: diplomados || [],
+        experienciasDocentes: experienciasDocentes || [],
+        logrosRelevantes: logrosRelevantes || [],
+        diseniosCurriculares: diseniosCurriculares || [],
+        conocimientosClave: conocimientosClave || [],
+        habilidadesRelevantes: habilidadesRelevantes || [],
+        proyectosExperiencia: proyectosExperiencia || [],
+        experienciasSectorProductivo: experienciasSectorProductivo || [],
+        vinculosIndustria: vinculosIndustria || [],
+        idiomas: idiomas || [],
+        competenciasDigitales: competenciasDigitales || [],
+        metodologiasActivas: metodologiasActivas || [],
+        plataformasVirtuales: plataformasVirtuales || [],
+        preferenciasDocencia: preferenciasDocencia || [],
+        archivos
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener el expediente del empleado",
       error: error.message
     });
   }
@@ -2200,6 +2352,7 @@ module.exports = {
   guardarInformacionPersonal,
   obtenerEstadoActualizacion,
   obtenerFormularioEmpleado,
+  obtenerExpedienteEmpleado,
   inicializarFormularioEmpleado,
   actualizarInformacionPersonal,
   subirDocumentoEmpleado,
