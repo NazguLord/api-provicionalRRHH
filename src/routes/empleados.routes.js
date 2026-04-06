@@ -11,6 +11,7 @@ const {
 const router = express.Router();
 
 router.get("/", empleadosController.listarColaboradores);
+router.get("/completos", empleadosController.listarColaboradoresCompletos);
 router.post(
   "/:empCod/inicializar",
   empleadosController.inicializarFormularioEmpleado

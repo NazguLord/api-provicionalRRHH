@@ -356,12 +356,8 @@ const obtenerPorCodigo = async (empCod) => {
   return rows[0] || null;
 };
 
-const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {}) => {
-  const pageNumber = Number(page) > 0 ? Number(page) : 1;
-  const limitNumber = Number(limit) > 0 ? Number(limit) : 10;
-  const offset = (pageNumber - 1) * limitNumber;
+const construirWhereColaboradoresCompletos = (search = null) => {
   const textoBusqueda = normalizarTexto(search);
-
   const where = [
     "e.Activo = 1",
     `(
@@ -370,7 +366,7 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
         THEN (${CONDICION_ACTUALIZACION_DOCENTE})
         ELSE (${CONDICION_ACTUALIZACION_ADMINISTRATIVO})
       END
-    )`
+      )`
   ];
   const params = [];
 
@@ -394,7 +390,17 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
     );
   }
 
-  const whereSql = where.join(" AND ");
+  return {
+    whereSql: where.join(" AND "),
+    params
+  };
+};
+
+const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {}) => {
+  const pageNumber = Number(page) > 0 ? Number(page) : 1;
+  const limitNumber = Number(limit) > 0 ? Number(limit) : 10;
+  const offset = (pageNumber - 1) * limitNumber;
+  const { whereSql, params } = construirWhereColaboradoresCompletos(search);
 
   const sqlDatos = `
     SELECT
@@ -447,6 +453,39 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
       totalPages: total === 0 ? 0 : Math.ceil(total / limitNumber)
     }
   };
+};
+
+const listarColaboradoresCompletos = async ({ search = null } = {}) => {
+  const { whereSql, params } = construirWhereColaboradoresCompletos(search);
+
+  const sql = `
+    SELECT
+      e.IdEmpleado,
+      e.CodigoEmpleado,
+      e.NumeroIdentidad,
+      e.PrimerNombre,
+      e.SegundoNombre,
+      e.TercerNombre,
+      e.PrimerApellido,
+      e.SegundoApellido,
+      CONCAT_WS(
+        ' ',
+        e.PrimerNombre,
+        e.SegundoNombre,
+        e.TercerNombre,
+        e.PrimerApellido,
+        e.SegundoApellido
+      ) AS NombreCompleto,
+      e.IdTipoEmpleado,
+      cte.NombreTipoEmpleado
+    FROM TB_Empleados e
+    LEFT JOIN TB_CatTipoEmpleado cte
+      ON cte.IdTipoEmpleado = e.IdTipoEmpleado
+    WHERE ${whereSql}
+    ORDER BY NombreCompleto ASC
+  `;
+
+  return query(sql, params);
 };
 
 const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
@@ -4487,6 +4526,7 @@ const eliminarPreferenciaDocenciaEmpleado = async (
 module.exports = {
   obtenerPorCodigo,
   listarColaboradores,
+  listarColaboradoresCompletos,
   obtenerEstadoActualizacionEmpleado,
   guardarInformacionPersonalDesdeLegacy,
   obtenerFormularioEmpleado,

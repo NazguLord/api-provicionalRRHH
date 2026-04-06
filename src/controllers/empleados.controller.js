@@ -73,6 +73,29 @@ const listarColaboradores = async (req, res) => {
   }
 };
 
+const listarColaboradoresCompletos = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const data = await empleadosQueries.listarColaboradoresCompletos({
+      search
+    });
+
+    res.json({
+      ok: true,
+      message: "Colaboradores completos obtenidos correctamente",
+      data,
+      total: data.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener el listado completo de colaboradores",
+      error: error.message
+    });
+  }
+};
+
 const guardarInformacionPersonal = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -2349,6 +2372,7 @@ const eliminarPreferenciaDocencia = async (req, res) => {
 module.exports = {
   obtenerPorCodigo,
   listarColaboradores,
+  listarColaboradoresCompletos,
   guardarInformacionPersonal,
   obtenerEstadoActualizacion,
   obtenerFormularioEmpleado,
