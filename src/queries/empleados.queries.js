@@ -106,6 +106,93 @@ const normalizarTipoEmpleado = (tipoEmpleado) => {
   return normalizarTexto(tipoEmpleado)?.toUpperCase() || null;
 };
 
+const CONDICION_ACTUALIZACION_ADMINISTRATIVO = `
+  EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoGradoAcademico g
+    WHERE g.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoExperienciaProfesional ex
+    WHERE ex.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoDiplomado d
+    WHERE d.CodigoEmpleado = e.CodigoEmpleado
+  )
+`;
+
+const CONDICION_ACTUALIZACION_DOCENTE = `
+  ${CONDICION_ACTUALIZACION_ADMINISTRATIVO}
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoExperienciaDocente ed
+    WHERE ed.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoLogroRelevante lr
+    WHERE lr.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoDisenioCurricular dc
+    WHERE dc.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoConocimientoClave cc
+    WHERE cc.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoHabilidadRelevante hr
+    WHERE hr.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoProyectoExperiencia pe
+    WHERE pe.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoExperienciaSectorProductivo esp
+    WHERE esp.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoVinculoIndustria vi
+    WHERE vi.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoIdioma i
+    WHERE i.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoCompetenciaDigital cd
+    WHERE cd.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoMetodologiaActiva ma
+    WHERE ma.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoPlataformaVirtual pv
+    WHERE pv.CodigoEmpleado = e.CodigoEmpleado
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM TB_EmpleadoPreferenciaDocencia pd
+    WHERE pd.CodigoEmpleado = e.CodigoEmpleado
+  )
+`;
+
 const normalizarListaAsignaturas = (payload = {}) => {
   const entrada =
     payload.asignaturas ??
@@ -275,7 +362,16 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
   const offset = (pageNumber - 1) * limitNumber;
   const textoBusqueda = normalizarTexto(search);
 
-  const where = ["e.Activo = 1"];
+  const where = [
+    "e.Activo = 1",
+    `(
+      CASE
+        WHEN e.IdTipoEmpleado IN (2, 3)
+        THEN (${CONDICION_ACTUALIZACION_DOCENTE})
+        ELSE (${CONDICION_ACTUALIZACION_ADMINISTRATIVO})
+      END
+    )`
+  ];
   const params = [];
 
   if (textoBusqueda) {
@@ -364,21 +460,7 @@ const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
           FROM TB_Empleados e
           WHERE e.CodigoEmpleado = ?
             AND e.Activo = 1
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoGradoAcademico g
-              WHERE g.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoExperienciaProfesional ex
-              WHERE ex.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoDiplomado d
-              WHERE d.CodigoEmpleado = e.CodigoEmpleado
-            )
+            AND (${CONDICION_ACTUALIZACION_ADMINISTRATIVO})
         )
         THEN 'Actualizado'
         ELSE 'Pendiente'
@@ -393,86 +475,7 @@ const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
           FROM TB_Empleados e
           WHERE e.CodigoEmpleado = ?
             AND e.Activo = 1
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoGradoAcademico g
-              WHERE g.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoExperienciaProfesional ex
-              WHERE ex.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoDiplomado d
-              WHERE d.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoExperienciaDocente ed
-              WHERE ed.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoLogroRelevante lr
-              WHERE lr.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoDisenioCurricular dc
-              WHERE dc.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoConocimientoClave cc
-              WHERE cc.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoHabilidadRelevante hr
-              WHERE hr.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoProyectoExperiencia pe
-              WHERE pe.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoExperienciaSectorProductivo esp
-              WHERE esp.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoVinculoIndustria vi
-              WHERE vi.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoIdioma i
-              WHERE i.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoCompetenciaDigital cd
-              WHERE cd.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoMetodologiaActiva ma
-              WHERE ma.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoPlataformaVirtual pv
-              WHERE pv.CodigoEmpleado = e.CodigoEmpleado
-            )
-            AND EXISTS (
-              SELECT 1
-              FROM TB_EmpleadoPreferenciaDocencia pd
-              WHERE pd.CodigoEmpleado = e.CodigoEmpleado
-            )
+            AND (${CONDICION_ACTUALIZACION_DOCENTE})
         )
         THEN 'Actualizado'
         ELSE 'Pendiente'
