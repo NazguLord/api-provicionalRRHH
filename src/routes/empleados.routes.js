@@ -1,6 +1,7 @@
 const express = require("express");
 
 const empleadosController = require("../controllers/empleados.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
 const {
   uploadEmpleadoDocumento,
   uploadGradoAcademicoAdjunto,
@@ -10,15 +11,19 @@ const {
 
 const router = express.Router();
 
+router.get("/archivo-preview", empleadosController.previewArchivoEmpleado);
+router.get(
+  "/:empCod/estado-actualizacion/:tipoEmpleado",
+  empleadosController.obtenerEstadoActualizacion
+);
+
+router.use(authMiddleware);
+
 router.get("/", empleadosController.listarColaboradores);
 router.get("/completos", empleadosController.listarColaboradoresCompletos);
 router.post(
   "/:empCod/inicializar",
   empleadosController.inicializarFormularioEmpleado
-);
-router.get(
-  "/:empCod/estado-actualizacion/:tipoEmpleado",
-  empleadosController.obtenerEstadoActualizacion
 );
 router.get("/:empCod/formulario", empleadosController.obtenerFormularioEmpleado);
 router.get("/:empCod/expediente", empleadosController.obtenerExpedienteEmpleado);

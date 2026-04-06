@@ -1,4 +1,22 @@
+const fs = require("fs");
+const path = require("path");
+
 const empleadosQueries = require("../queries/empleados.queries");
+const authMiddleware = require("../middlewares/auth.middleware");
+const {
+  firmarAccesoArchivo,
+  verificarAccesoArchivo
+} = require("../utils/file-access");
+
+const DATA_ROOT = path.join(__dirname, "..", "..", "data");
+const MIME_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".jfif": "image/jpeg",
+  ".pdf": "application/pdf"
+};
 
 const construirUrlArchivo = (req, ruta) => {
   if (!ruta) {
@@ -6,6 +24,45 @@ const construirUrlArchivo = (req, ruta) => {
   }
 
   return `${req.protocol}://${req.get("host")}${ruta}`;
+};
+
+const construirPreviewUrlArchivo = (req, ruta) => {
+  if (!ruta) {
+    return null;
+  }
+
+  const { expires, signature } = firmarAccesoArchivo(ruta);
+  const params = new URLSearchParams({
+    path: ruta,
+    expires: String(expires),
+    signature
+  });
+
+  return `${req.protocol}://${req.get("host")}/api/empleados/archivo-preview?${params.toString()}`;
+};
+
+const resolverRutaArchivo = (rutaPublica) => {
+  if (!rutaPublica || typeof rutaPublica !== "string") {
+    return null;
+  }
+
+  if (!rutaPublica.startsWith("/data/")) {
+    return null;
+  }
+
+  const relativa = rutaPublica.replace(/^\/data\//, "");
+  const absoluta = path.resolve(DATA_ROOT, relativa);
+
+  if (!absoluta.startsWith(DATA_ROOT)) {
+    return null;
+  }
+
+  return absoluta;
+};
+
+const obtenerMimeType = (rutaAbsoluta) => {
+  const extension = path.extname(rutaAbsoluta || "").toLowerCase();
+  return MIME_TYPES[extension] || "application/octet-stream";
 };
 
 const mapearArchivo = (req, nombre, ruta, extra = {}) => {
@@ -17,7 +74,118 @@ const mapearArchivo = (req, nombre, ruta, extra = {}) => {
     nombre,
     ruta,
     url: construirUrlArchivo(req, ruta),
+    previewUrl: construirPreviewUrlArchivo(req, ruta),
     ...extra
+  };
+};
+
+const construirExpedienteEmpleado = async (req, empCod) => {
+  const [
+    informacionPersonal,
+    gradosAcademicos,
+    experienciasProfesionales,
+    diplomados,
+    experienciasDocentes,
+    logrosRelevantes,
+    diseniosCurriculares,
+    conocimientosClave,
+    habilidadesRelevantes,
+    proyectosExperiencia,
+    experienciasSectorProductivo,
+    vinculosIndustria,
+    idiomas,
+    competenciasDigitales,
+    metodologiasActivas,
+    plataformasVirtuales,
+    preferenciasDocencia
+  ] = await Promise.all([
+    empleadosQueries.obtenerFormularioEmpleado(empCod),
+    empleadosQueries.listarGradosAcademicosEmpleado(empCod),
+    empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod),
+    empleadosQueries.listarDiplomadosEmpleado(empCod),
+    empleadosQueries.listarExperienciasDocentesEmpleado(empCod),
+    empleadosQueries.listarLogrosRelevantesEmpleado(empCod),
+    empleadosQueries.listarDiseniosCurricularesEmpleado(empCod),
+    empleadosQueries.listarConocimientosClaveEmpleado(empCod),
+    empleadosQueries.listarHabilidadesRelevantesEmpleado(empCod),
+    empleadosQueries.listarProyectosExperienciaEmpleado(empCod),
+    empleadosQueries.listarExperienciasSectorProductivoEmpleado(empCod),
+    empleadosQueries.listarVinculosIndustriaEmpleado(empCod),
+    empleadosQueries.listarIdiomasEmpleado(empCod),
+    empleadosQueries.listarCompetenciasDigitalesEmpleado(empCod),
+    empleadosQueries.listarMetodologiasActivasEmpleado(empCod),
+    empleadosQueries.listarPlataformasVirtualesEmpleado(empCod),
+    empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod)
+  ]);
+
+  if (!informacionPersonal) {
+    return null;
+  }
+
+  const archivos = [
+    mapearArchivo(req, "imagenPerfil", informacionPersonal.RutaImagenPerfil),
+    mapearArchivo(req, "hojaVida", informacionPersonal.RutaHojaVida),
+    mapearArchivo(
+      req,
+      "documentoIdentidad",
+      informacionPersonal.RutaDocumentoIdentidad
+    ),
+    mapearArchivo(
+      req,
+      "documentoColegiacion",
+      informacionPersonal.RutaDocumentoColegiacion
+    ),
+    ...(gradosAcademicos || []).flatMap((item) =>
+      item.RutaDocumentoAdjunto
+        ? [
+            mapearArchivo(req, "gradoAcademicoAdjunto", item.RutaDocumentoAdjunto, {
+              id: item.IdEmpleadoGradoAcademico,
+              titulo: item.Titulo ?? null
+            })
+          ]
+        : []
+    ),
+    ...(diplomados || []).flatMap((item) =>
+      item.RutaDocumentoAdjunto
+        ? [
+            mapearArchivo(req, "diplomadoAdjunto", item.RutaDocumentoAdjunto, {
+              id: item.IdEmpleadoDiplomado,
+              titulo: item.NombreDiplomado ?? null
+            })
+          ]
+        : []
+    ),
+    ...(logrosRelevantes || []).flatMap((item) =>
+      item.RutaDocumentoAdjunto
+        ? [
+            mapearArchivo(req, "logroRelevanteAdjunto", item.RutaDocumentoAdjunto, {
+              id: item.IdEmpleadoLogroRelevante,
+              titulo: item.LogroRelevante ?? null
+            })
+          ]
+        : []
+    )
+  ].filter(Boolean);
+
+  return {
+    informacionPersonal,
+    gradosAcademicos: gradosAcademicos || [],
+    experienciasProfesionales: experienciasProfesionales || [],
+    diplomados: diplomados || [],
+    experienciasDocentes: experienciasDocentes || [],
+    logrosRelevantes: logrosRelevantes || [],
+    diseniosCurriculares: diseniosCurriculares || [],
+    conocimientosClave: conocimientosClave || [],
+    habilidadesRelevantes: habilidadesRelevantes || [],
+    proyectosExperiencia: proyectosExperiencia || [],
+    experienciasSectorProductivo: experienciasSectorProductivo || [],
+    vinculosIndustria: vinculosIndustria || [],
+    idiomas: idiomas || [],
+    competenciasDigitales: competenciasDigitales || [],
+    metodologiasActivas: metodologiasActivas || [],
+    plataformasVirtuales: plataformasVirtuales || [],
+    preferenciasDocencia: preferenciasDocencia || [],
+    archivos
   };
 };
 
@@ -43,6 +211,88 @@ const obtenerPorCodigo = async (req, res) => {
     res.status(500).json({
       ok: false,
       message: "Error al obtener el empleado",
+      error: error.message
+    });
+  }
+};
+
+const previewArchivoEmpleado = async (req, res) => {
+  try {
+    const rutaPublica = String(req.query.path || "").trim();
+    const { expires, signature } = req.query;
+
+    let autorizado = false;
+
+    try {
+      authMiddleware.validarTokenBearer(req.headers.authorization || "");
+      autorizado = true;
+    } catch (error) {
+      autorizado = verificarAccesoArchivo({
+        rutaPublica,
+        expires,
+        signature
+      });
+    }
+
+    if (!autorizado) {
+      return res.status(401).json({
+        ok: false,
+        message: "No autorizado para acceder al archivo"
+      });
+    }
+
+    const rutaAbsoluta = resolverRutaArchivo(rutaPublica);
+
+    if (!rutaAbsoluta || !fs.existsSync(rutaAbsoluta)) {
+      return res.status(404).json({
+        ok: false,
+        message: "Archivo no encontrado"
+      });
+    }
+
+    const stat = fs.statSync(rutaAbsoluta);
+    const range = req.headers.range;
+
+    res.setHeader("Content-Type", obtenerMimeType(rutaAbsoluta));
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${path.basename(rutaAbsoluta)}"`
+    );
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "private, max-age=300");
+
+    if (range) {
+      const matches = /bytes=(\d*)-(\d*)/.exec(range);
+
+      if (!matches) {
+        return res.status(416).end();
+      }
+
+      const start = matches[1] ? Number(matches[1]) : 0;
+      const end = matches[2] ? Number(matches[2]) : stat.size - 1;
+
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        start > end ||
+        start >= stat.size
+      ) {
+        return res.status(416).end();
+      }
+
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+      res.setHeader("Content-Length", end - start + 1);
+
+      return fs.createReadStream(rutaAbsoluta, { start, end }).pipe(res);
+    }
+
+    res.setHeader("Content-Length", stat.size);
+    return fs.createReadStream(rutaAbsoluta).pipe(res);
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al previsualizar el archivo",
       error: error.message
     });
   }
@@ -77,13 +327,18 @@ const listarColaboradoresCompletos = async (req, res) => {
   try {
     const { search } = req.query;
 
-    const data = await empleadosQueries.listarColaboradoresCompletos({
+    const colaboradores = await empleadosQueries.listarColaboradoresCompletos({
       search
     });
+    const data = await Promise.all(
+      colaboradores.map((empleado) =>
+        construirExpedienteEmpleado(req, empleado.CodigoEmpleado)
+      )
+    );
 
     res.json({
       ok: true,
-      message: "Colaboradores completos obtenidos correctamente",
+      message: "Expedientes completos obtenidos correctamente",
       data,
       total: data.length
     });
@@ -160,124 +415,19 @@ const obtenerFormularioEmpleado = async (req, res) => {
 const obtenerExpedienteEmpleado = async (req, res) => {
   try {
     const { empCod } = req.params;
+    const data = await construirExpedienteEmpleado(req, empCod);
 
-    const [
-      informacionPersonal,
-      gradosAcademicos,
-      experienciasProfesionales,
-      diplomados,
-      experienciasDocentes,
-      logrosRelevantes,
-      diseniosCurriculares,
-      conocimientosClave,
-      habilidadesRelevantes,
-      proyectosExperiencia,
-      experienciasSectorProductivo,
-      vinculosIndustria,
-      idiomas,
-      competenciasDigitales,
-      metodologiasActivas,
-      plataformasVirtuales,
-      preferenciasDocencia
-    ] = await Promise.all([
-      empleadosQueries.obtenerFormularioEmpleado(empCod),
-      empleadosQueries.listarGradosAcademicosEmpleado(empCod),
-      empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod),
-      empleadosQueries.listarDiplomadosEmpleado(empCod),
-      empleadosQueries.listarExperienciasDocentesEmpleado(empCod),
-      empleadosQueries.listarLogrosRelevantesEmpleado(empCod),
-      empleadosQueries.listarDiseniosCurricularesEmpleado(empCod),
-      empleadosQueries.listarConocimientosClaveEmpleado(empCod),
-      empleadosQueries.listarHabilidadesRelevantesEmpleado(empCod),
-      empleadosQueries.listarProyectosExperienciaEmpleado(empCod),
-      empleadosQueries.listarExperienciasSectorProductivoEmpleado(empCod),
-      empleadosQueries.listarVinculosIndustriaEmpleado(empCod),
-      empleadosQueries.listarIdiomasEmpleado(empCod),
-      empleadosQueries.listarCompetenciasDigitalesEmpleado(empCod),
-      empleadosQueries.listarMetodologiasActivasEmpleado(empCod),
-      empleadosQueries.listarPlataformasVirtualesEmpleado(empCod),
-      empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod)
-    ]);
-
-    if (!informacionPersonal) {
+    if (!data) {
       return res.status(404).json({
         ok: false,
         message: "Empleado no encontrado"
       });
     }
 
-    const archivos = [
-      mapearArchivo(
-        req,
-        "imagenPerfil",
-        informacionPersonal.RutaImagenPerfil
-      ),
-      mapearArchivo(req, "hojaVida", informacionPersonal.RutaHojaVida),
-      mapearArchivo(
-        req,
-        "documentoIdentidad",
-        informacionPersonal.RutaDocumentoIdentidad
-      ),
-      mapearArchivo(
-        req,
-        "documentoColegiacion",
-        informacionPersonal.RutaDocumentoColegiacion
-      ),
-      ...(gradosAcademicos || []).flatMap((item) =>
-        item.RutaDocumentoAdjunto
-          ? [
-              mapearArchivo(req, "gradoAcademicoAdjunto", item.RutaDocumentoAdjunto, {
-                id: item.IdEmpleadoGradoAcademico,
-                titulo: item.Titulo ?? null
-              })
-            ]
-          : []
-      ),
-      ...(diplomados || []).flatMap((item) =>
-        item.RutaDocumentoAdjunto
-          ? [
-              mapearArchivo(req, "diplomadoAdjunto", item.RutaDocumentoAdjunto, {
-                id: item.IdEmpleadoDiplomado,
-                titulo: item.NombreDiplomado ?? null
-              })
-            ]
-          : []
-      ),
-      ...(logrosRelevantes || []).flatMap((item) =>
-        item.RutaDocumentoAdjunto
-          ? [
-              mapearArchivo(req, "logroRelevanteAdjunto", item.RutaDocumentoAdjunto, {
-                id: item.IdEmpleadoLogroRelevante,
-                titulo: item.LogroRelevante ?? null
-              })
-            ]
-          : []
-      )
-    ].filter(Boolean);
-
     res.json({
       ok: true,
       message: "Expediente del empleado obtenido correctamente",
-      data: {
-        informacionPersonal,
-        gradosAcademicos: gradosAcademicos || [],
-        experienciasProfesionales: experienciasProfesionales || [],
-        diplomados: diplomados || [],
-        experienciasDocentes: experienciasDocentes || [],
-        logrosRelevantes: logrosRelevantes || [],
-        diseniosCurriculares: diseniosCurriculares || [],
-        conocimientosClave: conocimientosClave || [],
-        habilidadesRelevantes: habilidadesRelevantes || [],
-        proyectosExperiencia: proyectosExperiencia || [],
-        experienciasSectorProductivo: experienciasSectorProductivo || [],
-        vinculosIndustria: vinculosIndustria || [],
-        idiomas: idiomas || [],
-        competenciasDigitales: competenciasDigitales || [],
-        metodologiasActivas: metodologiasActivas || [],
-        plataformasVirtuales: plataformasVirtuales || [],
-        preferenciasDocencia: preferenciasDocencia || [],
-        archivos
-      }
+      data
     });
   } catch (error) {
     res.status(500).json({
@@ -2371,6 +2521,7 @@ const eliminarPreferenciaDocencia = async (req, res) => {
 
 module.exports = {
   obtenerPorCodigo,
+  previewArchivoEmpleado,
   listarColaboradores,
   listarColaboradoresCompletos,
   guardarInformacionPersonal,
