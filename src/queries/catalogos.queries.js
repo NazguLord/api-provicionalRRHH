@@ -28,6 +28,20 @@ const listarEstadosCiviles = async () => {
   return query(sql);
 };
 
+const listarGeneros = async () => {
+  const sql = `
+    SELECT
+      IdGenero,
+      NombreGenero,
+      Activo
+    FROM TB_CatGenero
+    WHERE Activo = 1
+    ORDER BY IdGenero ASC
+  `;
+
+  return query(sql);
+};
+
 const listarTiposEmpleado = async () => {
   const sql = `
     SELECT
@@ -199,6 +213,7 @@ const listarAreasInteresDocencia = async () => {
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
+  listarGeneros,
   listarTiposEmpleado,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,

@@ -31,6 +31,16 @@ router.patch(
   "/:empCod/informacion-personal",
   empleadosController.actualizarInformacionPersonal
 );
+router.get("/:empCod/hijos", empleadosController.listarHijosEmpleado);
+router.post("/:empCod/hijos", empleadosController.crearHijoEmpleado);
+router.patch(
+  "/:empCod/hijos/:idEmpleadoHijo",
+  empleadosController.actualizarHijoEmpleado
+);
+router.delete(
+  "/:empCod/hijos/:idEmpleadoHijo",
+  empleadosController.eliminarHijoEmpleado
+);
 router.post(
   "/:empCod/documentos/:tipoDocumento",
   uploadEmpleadoDocumento.single("archivo"),

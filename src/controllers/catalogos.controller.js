@@ -36,6 +36,24 @@ const listarEstadosCiviles = async (req, res) => {
   }
 };
 
+const listarGeneros = async (req, res) => {
+  try {
+    const generos = await catalogosQueries.listarGeneros();
+
+    res.json({
+      ok: true,
+      message: "Generos obtenidos correctamente",
+      data: generos
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los generos",
+      error: error.message
+    });
+  }
+};
+
 const listarTiposEmpleado = async (req, res) => {
   try {
     const tiposEmpleado = await catalogosQueries.listarTiposEmpleado();
@@ -270,6 +288,7 @@ const listarAreasInteresDocencia = async (req, res) => {
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
+  listarGeneros,
   listarTiposEmpleado,
   obtenerTipoEmpleadoPorCodigo,
   listarIdiomas,

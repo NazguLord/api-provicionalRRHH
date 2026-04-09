@@ -9,6 +9,26 @@ const normalizarTexto = (valor) => {
   return texto === "" ? null : texto;
 };
 
+const normalizarFechaOpcional = (valor, valorActual = undefined) => {
+  if (valor === undefined) {
+    return valorActual;
+  }
+
+  return normalizarTexto(valor);
+};
+
+const obtenerCampoPayload = (payload = {}, llaveCamel, llavePascal) => {
+  if (Object.prototype.hasOwnProperty.call(payload, llaveCamel)) {
+    return payload[llaveCamel];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, llavePascal)) {
+    return payload[llavePascal];
+  }
+
+  return undefined;
+};
+
 const normalizarValorLegacy = (valor) => {
   const texto = normalizarTexto(valor);
 
@@ -100,6 +120,18 @@ const valorBooleano = (valor) => {
   }
 
   return 0;
+};
+
+const valorBooleanoNullable = (valor, valorActual = undefined) => {
+  if (valor === undefined) {
+    return valorActual;
+  }
+
+  if (valor === null || valor === "") {
+    return null;
+  }
+
+  return valorBooleano(valor);
 };
 
 const normalizarTipoEmpleado = (tipoEmpleado) => {
@@ -286,13 +318,16 @@ const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "LicenciaVehiculo",
   "FechaIngreso",
   "NumeroCuentaBancaria",
+  "TieneHijos",
   "PoseeVehiculo",
   "MarcaVehiculo",
   "ModeloVehiculo",
   "AnioVehiculo",
   "NombreConyuge",
+  "TelefonoConyuge",
   "NombreContactoEmergencia",
   "TelefonoContactoEmergencia",
+  "RelacionContactoEmergencia",
   "NombreParroquia",
   "NombreParroco",
   "NombreMovimiento",
@@ -580,13 +615,16 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       e.LicenciaVehiculo,
       e.FechaIngreso,
       e.NumeroCuentaBancaria,
+      e.TieneHijos,
       e.PoseeVehiculo,
       e.MarcaVehiculo,
       e.ModeloVehiculo,
       e.AnioVehiculo,
       e.NombreConyuge,
+      e.TelefonoConyuge,
       e.NombreContactoEmergencia,
       e.TelefonoContactoEmergencia,
+      e.RelacionContactoEmergencia,
       e.NombreParroquia,
       e.NombreParroco,
       e.NombreMovimiento,
@@ -603,10 +641,16 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       e.Activo,
       e.FechaCreacion,
       e.FechaActualizacion,
-      cte.NombreTipoEmpleado
+      cec.NombreEstadoCivil,
+      cte.NombreTipoEmpleado,
+      cts.NombreTipoSangre
     FROM TB_Empleados e
+    LEFT JOIN TB_CatEstadoCivil cec
+      ON cec.IdEstadoCivil = e.IdEstadoCivil
     LEFT JOIN TB_CatTipoEmpleado cte
       ON cte.IdTipoEmpleado = e.IdTipoEmpleado
+    LEFT JOIN TB_CatTipoSangre cts
+      ON cts.IdTipoSangre = e.IdTipoSangre
     WHERE CodigoEmpleado = ?
     LIMIT 1
   `;
@@ -640,14 +684,32 @@ const mapearFormularioInformacionPersonal = (empleado = {}) => {
     ]
       .filter((valor) => normalizarTexto(valor))
       .join(" "),
+    FechaNacimiento: empleado.FechaNacimiento ?? null,
+    DireccionActual: empleado.DireccionHogar ?? null,
+    Telefono: empleado.Telefono ?? null,
+    IdEstadoCivil: empleado.IdEstadoCivil ?? null,
+    NombreEstadoCivil: empleado.NombreEstadoCivil ?? null,
+    NombreConyuge: empleado.NombreConyuge ?? null,
+    TelefonoConyuge: empleado.TelefonoConyuge ?? null,
+    NombreContactoEmergencia: empleado.NombreContactoEmergencia ?? null,
+    TelefonoContactoEmergencia: empleado.TelefonoContactoEmergencia ?? null,
+    RelacionContactoEmergencia:
+      empleado.RelacionContactoEmergencia ?? null,
     CorreoElectronicoPersonal: empleado.CorreoElectronicoPersonal ?? null,
     CorreoElectronicoInstitucional:
       empleado.CorreoElectronicoInstitucional ?? null,
     NumeroColegio: empleado.NumeroColegio ?? null,
+    TieneHijos: empleado.TieneHijos ?? null,
     RutaImagenPerfil: empleado.RutaImagenPerfil ?? null,
     RutaHojaVida: empleado.RutaHojaVida ?? null,
     RutaDocumentoIdentidad: empleado.RutaDocumentoIdentidad ?? null,
     RutaDocumentoColegiacion: empleado.RutaDocumentoColegiacion ?? null,
+    PoseeVehiculo: empleado.PoseeVehiculo ?? null,
+    MarcaVehiculo: empleado.MarcaVehiculo ?? null,
+    ModeloVehiculo: empleado.ModeloVehiculo ?? null,
+    AnioVehiculo: empleado.AnioVehiculo ?? null,
+    IdTipoSangre: empleado.IdTipoSangre ?? null,
+    NombreTipoSangre: empleado.NombreTipoSangre ?? null,
     inicializado: Boolean(empleado.inicializado),
     origen: empleado.origen ?? "nuevo"
   };
@@ -684,6 +746,12 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
       nombreTipoEmpleado
     )
   ]);
+
+  const tieneHijosPayload = obtenerCampoPayload(
+    payload,
+    "tieneHijos",
+    "TieneHijos"
+  );
 
   return {
     CodigoEmpleado: legacy.EmpCod,
@@ -722,6 +790,7 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     NumeroCuentaBancaria: normalizarTexto(
       payload.numeroCuentaBancaria ?? legacy.EmpNumCue
     ),
+    TieneHijos: valorBooleanoNullable(tieneHijosPayload, null),
     PoseeVehiculo:
       payload.poseeVehiculo !== undefined
         ? valorBooleano(payload.poseeVehiculo)
@@ -736,11 +805,18 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     NombreConyuge: normalizarTexto(
       payload.nombreConyuge ?? legacy.EmpCoyNom
     ),
+    TelefonoConyuge: normalizarTexto(
+      payload.telefonoConyuge ?? payload.TelefonoConyuge
+    ),
     NombreContactoEmergencia: normalizarTexto(
       payload.nombreContactoEmergencia ?? payload.NombreContactoEmergencia ?? legacy.EmpEmrNom
     ),
     TelefonoContactoEmergencia: normalizarTexto(
       payload.telefonoContactoEmergencia ?? payload.TelefonoContactoEmergencia ?? legacy.EmpEmrTel
+    ),
+    RelacionContactoEmergencia: normalizarTexto(
+      payload.relacionContactoEmergencia ??
+        payload.RelacionContactoEmergencia
     ),
     NombreParroquia: normalizarTexto(
       payload.nombreParroquia ?? legacy.EmpParNom
@@ -803,13 +879,16 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
     datos.LicenciaVehiculo,
     datos.FechaIngreso,
     datos.NumeroCuentaBancaria,
+    datos.TieneHijos,
     datos.PoseeVehiculo,
     datos.MarcaVehiculo,
     datos.ModeloVehiculo,
     datos.AnioVehiculo,
     datos.NombreConyuge,
+    datos.TelefonoConyuge,
     datos.NombreContactoEmergencia,
     datos.TelefonoContactoEmergencia,
+    datos.RelacionContactoEmergencia,
     datos.NombreParroquia,
     datos.NombreParroco,
     datos.NombreMovimiento,
@@ -848,13 +927,16 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       LicenciaVehiculo,
       FechaIngreso,
       NumeroCuentaBancaria,
+      TieneHijos,
       PoseeVehiculo,
       MarcaVehiculo,
       ModeloVehiculo,
       AnioVehiculo,
       NombreConyuge,
+      TelefonoConyuge,
       NombreContactoEmergencia,
       TelefonoContactoEmergencia,
+      RelacionContactoEmergencia,
       NombreParroquia,
       NombreParroco,
       NombreMovimiento,
@@ -890,13 +972,16 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       LicenciaVehiculo = VALUES(LicenciaVehiculo),
       FechaIngreso = VALUES(FechaIngreso),
       NumeroCuentaBancaria = VALUES(NumeroCuentaBancaria),
+      TieneHijos = VALUES(TieneHijos),
       PoseeVehiculo = VALUES(PoseeVehiculo),
       MarcaVehiculo = VALUES(MarcaVehiculo),
       ModeloVehiculo = VALUES(ModeloVehiculo),
       AnioVehiculo = VALUES(AnioVehiculo),
       NombreConyuge = VALUES(NombreConyuge),
+      TelefonoConyuge = VALUES(TelefonoConyuge),
       NombreContactoEmergencia = VALUES(NombreContactoEmergencia),
       TelefonoContactoEmergencia = VALUES(TelefonoContactoEmergencia),
+      RelacionContactoEmergencia = VALUES(RelacionContactoEmergencia),
       NombreParroquia = VALUES(NombreParroquia),
       NombreParroco = VALUES(NombreParroco),
       NombreMovimiento = VALUES(NombreMovimiento),
@@ -943,15 +1028,23 @@ const obtenerFormularioEmpleado = async (empCod) => {
   }
 
   if (empleadoNuevo) {
-    return mapearFormularioInformacionPersonal({
-      ...empleadoNuevo,
-      inicializado: true,
-      origen: "nuevo"
-    });
+    const hijos = await listarHijosEmpleado(empCod);
+
+    return {
+      ...mapearFormularioInformacionPersonal({
+        ...empleadoNuevo,
+        inicializado: true,
+        origen: "nuevo"
+      }),
+      Hijos: hijos || []
+    };
   }
 
   const legacy = await mapearLegacyAFormulario(empCod);
-  return mapearFormularioInformacionPersonal(legacy);
+  return {
+    ...mapearFormularioInformacionPersonal(legacy),
+    Hijos: []
+  };
 };
 
 const inicializarEmpleadoDesdeLegacy = async (empCod, payload = {}) => {
@@ -991,6 +1084,8 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
     SegundoApellido: "SegundoApellido",
     direccionHogar: "DireccionHogar",
     DireccionHogar: "DireccionHogar",
+    direccionActual: "DireccionHogar",
+    DireccionActual: "DireccionHogar",
     idEstadoCivil: "IdEstadoCivil",
     IdEstadoCivil: "IdEstadoCivil",
     telefono: "Telefono",
@@ -1015,6 +1110,8 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
     FechaIngreso: "FechaIngreso",
     numeroCuentaBancaria: "NumeroCuentaBancaria",
     NumeroCuentaBancaria: "NumeroCuentaBancaria",
+    tieneHijos: "TieneHijos",
+    TieneHijos: "TieneHijos",
     poseeVehiculo: "PoseeVehiculo",
     PoseeVehiculo: "PoseeVehiculo",
     marcaVehiculo: "MarcaVehiculo",
@@ -1025,10 +1122,14 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
     AnioVehiculo: "AnioVehiculo",
     nombreConyuge: "NombreConyuge",
     NombreConyuge: "NombreConyuge",
+    telefonoConyuge: "TelefonoConyuge",
+    TelefonoConyuge: "TelefonoConyuge",
     nombreContactoEmergencia: "NombreContactoEmergencia",
     NombreContactoEmergencia: "NombreContactoEmergencia",
     telefonoContactoEmergencia: "TelefonoContactoEmergencia",
     TelefonoContactoEmergencia: "TelefonoContactoEmergencia",
+    relacionContactoEmergencia: "RelacionContactoEmergencia",
+    RelacionContactoEmergencia: "RelacionContactoEmergencia",
     nombreParroquia: "NombreParroquia",
     NombreParroquia: "NombreParroquia",
     nombreParroco: "NombreParroco",
@@ -1070,6 +1171,11 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
 
     if (campoDb === "PoseeVehiculo" || campoDb === "Activo") {
       datos[campoDb] = valorBooleano(valor);
+      continue;
+    }
+
+    if (campoDb === "TieneHijos") {
+      datos[campoDb] = valorBooleanoNullable(valor, null);
       continue;
     }
 
@@ -1125,7 +1231,7 @@ const actualizarInformacionPersonal = async (empCod, payload = {}) => {
   );
 
   if (campos.length === 0) {
-    return obtenerEmpleadoNuevoPorCodigo(empCod);
+    return obtenerFormularioEmpleado(empCod);
   }
 
   const sql = `
@@ -1139,7 +1245,7 @@ const actualizarInformacionPersonal = async (empCod, payload = {}) => {
     empCod
   ]);
 
-  return obtenerEmpleadoNuevoPorCodigo(empCod);
+  return obtenerFormularioEmpleado(empCod);
 };
 
 const asegurarEmpleadoInicializado = async (empCod) => {
@@ -1193,6 +1299,232 @@ const actualizarDocumentoEmpleado = async (empCod, tipoDocumento, archivo) => {
   await query(sql, [rutaArchivo, empCod]);
 
   return obtenerEmpleadoNuevoPorCodigo(empCod);
+};
+
+const listarHijosEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  return query(
+    `
+      SELECT
+        eh.IdEmpleadoHijo,
+        eh.IdEmpleado,
+        eh.CodigoEmpleado,
+        eh.NombreCompleto,
+        eh.Sexo,
+        eh.FechaNacimiento,
+        eh.Activo,
+        eh.FechaCreacion,
+        eh.FechaActualizacion
+      FROM TB_EmpleadoHijo eh
+      WHERE eh.CodigoEmpleado = ?
+        AND eh.Activo = 1
+      ORDER BY eh.FechaNacimiento ASC, eh.IdEmpleadoHijo DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+};
+
+const crearHijoEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const nombreCompleto = normalizarTexto(
+    payload.nombreCompleto ?? payload.NombreCompleto
+  );
+  const sexo = normalizarTexto(payload.sexo ?? payload.Sexo);
+  const fechaNacimiento = normalizarFechaOpcional(
+    obtenerCampoPayload(payload, "fechaNacimiento", "FechaNacimiento"),
+    null
+  );
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoHijo (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombreCompleto,
+        Sexo,
+        FechaNacimiento,
+        Activo
+      ) VALUES (?, ?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      nombreCompleto,
+      sexo,
+      fechaNacimiento
+    ]
+  );
+
+  await query(
+    `
+      UPDATE TB_Empleados
+      SET TieneHijos = 1
+      WHERE CodigoEmpleado = ?
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        eh.IdEmpleadoHijo,
+        eh.IdEmpleado,
+        eh.CodigoEmpleado,
+        eh.NombreCompleto,
+        eh.Sexo,
+        eh.FechaNacimiento,
+        eh.Activo,
+        eh.FechaCreacion,
+        eh.FechaActualizacion
+      FROM TB_EmpleadoHijo eh
+      WHERE eh.IdEmpleadoHijo = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarTieneHijosDesdeTabla = async (codigoEmpleado) => {
+  const rows = await query(
+    `
+      SELECT COUNT(*) AS total
+      FROM TB_EmpleadoHijo
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+    `,
+    [codigoEmpleado]
+  );
+
+  const total = Number(rows[0]?.total || 0);
+
+  await query(
+    `
+      UPDATE TB_Empleados
+      SET TieneHijos = ?
+      WHERE CodigoEmpleado = ?
+    `,
+    [total > 0 ? 1 : 0, codigoEmpleado]
+  );
+};
+
+const actualizarHijoEmpleado = async (empCod, idEmpleadoHijo, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoHijo
+      WHERE IdEmpleadoHijo = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoHijo, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const nombreCompletoEntrada = obtenerCampoPayload(
+    payload,
+    "nombreCompleto",
+    "NombreCompleto"
+  );
+  const sexoEntrada = obtenerCampoPayload(payload, "sexo", "Sexo");
+  const fechaNacimientoEntrada = obtenerCampoPayload(
+    payload,
+    "fechaNacimiento",
+    "FechaNacimiento"
+  );
+
+  await query(
+    `
+      UPDATE TB_EmpleadoHijo
+      SET
+        NombreCompleto = ?,
+        Sexo = ?,
+        FechaNacimiento = ?
+      WHERE IdEmpleadoHijo = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      nombreCompletoEntrada === undefined
+        ? actual.NombreCompleto
+        : normalizarTexto(nombreCompletoEntrada),
+      sexoEntrada === undefined ? actual.Sexo : normalizarTexto(sexoEntrada),
+      normalizarFechaOpcional(
+        fechaNacimientoEntrada,
+        actual.FechaNacimiento ?? null
+      ),
+      idEmpleadoHijo,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        eh.IdEmpleadoHijo,
+        eh.IdEmpleado,
+        eh.CodigoEmpleado,
+        eh.NombreCompleto,
+        eh.Sexo,
+        eh.FechaNacimiento,
+        eh.Activo,
+        eh.FechaCreacion,
+        eh.FechaActualizacion
+      FROM TB_EmpleadoHijo eh
+      WHERE eh.IdEmpleadoHijo = ?
+      LIMIT 1
+    `,
+    [idEmpleadoHijo]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarHijoEmpleado = async (empCod, idEmpleadoHijo) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoHijo
+      SET Activo = 0
+      WHERE IdEmpleadoHijo = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoHijo, empleado.CodigoEmpleado]
+  );
+
+  if (result.affectedRows > 0) {
+    await actualizarTieneHijosDesdeTabla(empleado.CodigoEmpleado);
+  }
+
+  return result.affectedRows > 0;
 };
 
 const obtenerEstadoAcademicoPorId = async (idEstadoAcademico) => {
@@ -1324,7 +1656,7 @@ const crearGradoAcademicoEmpleado = async (empCod, payload = {}, archivo = null)
 
   const graduado =
     nombreEstadoAcademico &&
-    normalizarTexto(nombreEstadoAcademico)?.toUpperCase() === "COMPLETADO"
+    normalizarTexto(nombreEstadoAcademico)?.toUpperCase() === "FINALIZADO"
       ? 1
       : 0;
 
@@ -1433,7 +1765,7 @@ const actualizarGradoAcademicoEmpleado = async (
 
   const graduado =
     nombreEstadoAcademico &&
-    normalizarTexto(nombreEstadoAcademico)?.toUpperCase() === "COMPLETADO"
+    normalizarTexto(nombreEstadoAcademico)?.toUpperCase() === "FINALIZADO"
       ? 1
       : 0;
 
@@ -2247,13 +2579,16 @@ const crearExperienciaProfesionalEmpleado = async (empCod, payload = {}) => {
     ) VALUES (?, ?, ?, ?, ?, ?, 1)
   `;
 
+  const fechaDesde = obtenerCampoPayload(payload, "fechaDesde", "FechaDesde");
+  const fechaHasta = obtenerCampoPayload(payload, "fechaHasta", "FechaHasta");
+
   const result = await query(sql, [
     empleado.IdEmpleado,
     empleado.CodigoEmpleado,
     normalizarTexto(payload.empresa ?? payload.Empresa),
     normalizarTexto(payload.cargo ?? payload.Cargo),
-    payload.fechaDesde ?? payload.FechaDesde ?? null,
-    payload.fechaHasta ?? payload.FechaHasta ?? null
+    normalizarFechaOpcional(fechaDesde, null),
+    normalizarFechaOpcional(fechaHasta, null)
   ]);
 
   const rows = await query(
@@ -2308,6 +2643,9 @@ const actualizarExperienciaProfesionalEmpleado = async (
     return null;
   }
 
+  const fechaDesde = obtenerCampoPayload(payload, "fechaDesde", "FechaDesde");
+  const fechaHasta = obtenerCampoPayload(payload, "fechaHasta", "FechaHasta");
+
   await query(
     `
       UPDATE TB_EmpleadoExperienciaProfesional
@@ -2322,8 +2660,8 @@ const actualizarExperienciaProfesionalEmpleado = async (
     [
       normalizarTexto(payload.empresa ?? payload.Empresa) || actual.Empresa,
       normalizarTexto(payload.cargo ?? payload.Cargo) || actual.Cargo,
-      payload.fechaDesde ?? payload.FechaDesde ?? actual.FechaDesde ?? null,
-      payload.fechaHasta ?? payload.FechaHasta ?? actual.FechaHasta ?? null,
+      normalizarFechaOpcional(fechaDesde, actual.FechaDesde ?? null),
+      normalizarFechaOpcional(fechaHasta, actual.FechaHasta ?? null),
       idEmpleadoExperienciaProfesional,
       empleado.CodigoEmpleado
     ]
@@ -4539,6 +4877,10 @@ module.exports = {
   inicializarEmpleadoDesdeLegacy,
   actualizarInformacionPersonal,
   actualizarDocumentoEmpleado,
+  listarHijosEmpleado,
+  crearHijoEmpleado,
+  actualizarHijoEmpleado,
+  eliminarHijoEmpleado,
   listarGradosAcademicosEmpleado,
   crearGradoAcademicoEmpleado,
   actualizarGradoAcademicoEmpleado,

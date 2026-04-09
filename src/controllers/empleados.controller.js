@@ -568,6 +568,122 @@ const subirDocumentoEmpleado = async (req, res) => {
   }
 };
 
+const listarHijosEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const hijos = await empleadosQueries.listarHijosEmpleado(empCod);
+
+    if (!hijos) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Hijos del empleado obtenidos correctamente",
+      data: hijos
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los hijos del empleado",
+      error: error.message
+    });
+  }
+};
+
+const crearHijoEmpleado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const hijo = await empleadosQueries.crearHijoEmpleado(empCod, payload);
+
+    if (!hijo) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Hijo guardado correctamente",
+      data: hijo
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar el hijo del empleado",
+      error: error.message
+    });
+  }
+};
+
+const actualizarHijoEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoHijo } = req.params;
+    const payload = req.body || {};
+
+    const hijo = await empleadosQueries.actualizarHijoEmpleado(
+      empCod,
+      Number(idEmpleadoHijo),
+      payload
+    );
+
+    if (!hijo) {
+      return res.status(404).json({
+        ok: false,
+        message: "Hijo no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Hijo actualizado correctamente",
+      data: hijo
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar el hijo del empleado",
+      error: error.message
+    });
+  }
+};
+
+const eliminarHijoEmpleado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoHijo } = req.params;
+
+    const eliminado = await empleadosQueries.eliminarHijoEmpleado(
+      empCod,
+      Number(idEmpleadoHijo)
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Hijo no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Hijo eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el hijo del empleado",
+      error: error.message
+    });
+  }
+};
+
 const listarGradosAcademicos = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -2531,6 +2647,10 @@ module.exports = {
   inicializarFormularioEmpleado,
   actualizarInformacionPersonal,
   subirDocumentoEmpleado,
+  listarHijosEmpleado,
+  crearHijoEmpleado,
+  actualizarHijoEmpleado,
+  eliminarHijoEmpleado,
   listarGradosAcademicos,
   crearGradoAcademico,
   actualizarGradoAcademico,
