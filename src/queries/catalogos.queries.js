@@ -186,11 +186,29 @@ const listarCampus = async () => {
   const sql = `
     SELECT
       IdCampus,
+      SdeCod,
       NombreCampus,
       Activo
     FROM TB_CatCampus
     WHERE Activo = 1
     ORDER BY NombreCampus ASC
+  `;
+
+  return query(sql);
+};
+
+const listarUniversidades = async () => {
+  const sql = `
+    SELECT
+      IdUniversidad,
+      NombreUniversidad,
+      Siglas,
+      TipoUniversidad,
+      CiudadPrincipal,
+      Activo
+    FROM TB_CatUniversidad
+    WHERE Activo = 1
+    ORDER BY NombreUniversidad ASC
   `;
 
   return query(sql);
@@ -225,5 +243,6 @@ module.exports = {
   listarMetodologiasActivas,
   listarPlataformasVirtualesEducativas,
   listarCampus,
+  listarUniversidades,
   listarAreasInteresDocencia
 };

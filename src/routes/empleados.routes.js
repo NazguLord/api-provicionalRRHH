@@ -6,6 +6,8 @@ const {
   uploadEmpleadoDocumento,
   uploadGradoAcademicoAdjunto,
   uploadDiplomadoAdjunto,
+  uploadCursoAdjunto,
+  uploadCertificadoAdjunto,
   uploadLogroRelevanteAdjunto
 } = require("../middlewares/upload.middleware");
 
@@ -94,6 +96,36 @@ router.patch(
 router.delete(
   "/:empCod/diplomados/:idEmpleadoDiplomado",
   empleadosController.eliminarDiplomado
+);
+router.get("/:empCod/cursos", empleadosController.listarCursos);
+router.post(
+  "/:empCod/cursos",
+  uploadCursoAdjunto.single("archivo"),
+  empleadosController.crearCurso
+);
+router.patch(
+  "/:empCod/cursos/:idEmpleadoCurso",
+  uploadCursoAdjunto.single("archivo"),
+  empleadosController.actualizarCurso
+);
+router.delete(
+  "/:empCod/cursos/:idEmpleadoCurso",
+  empleadosController.eliminarCurso
+);
+router.get("/:empCod/certificados", empleadosController.listarCertificados);
+router.post(
+  "/:empCod/certificados",
+  uploadCertificadoAdjunto.single("archivo"),
+  empleadosController.crearCertificado
+);
+router.patch(
+  "/:empCod/certificados/:idEmpleadoCertificado",
+  uploadCertificadoAdjunto.single("archivo"),
+  empleadosController.actualizarCertificado
+);
+router.delete(
+  "/:empCod/certificados/:idEmpleadoCertificado",
+  empleadosController.eliminarCertificado
 );
 router.get(
   "/:empCod/experiencias-docentes",

@@ -79,12 +79,30 @@ const mapearArchivo = (req, nombre, ruta, extra = {}) => {
   };
 };
 
+const resolverIdNumerico = (...valores) => {
+  for (const valor of valores) {
+    if (valor === undefined || valor === null || valor === "") {
+      continue;
+    }
+
+    const numero = Number(valor);
+
+    if (Number.isInteger(numero) && numero > 0) {
+      return numero;
+    }
+  }
+
+  return null;
+};
+
 const construirExpedienteEmpleado = async (req, empCod) => {
   const [
     informacionPersonal,
     gradosAcademicos,
     experienciasProfesionales,
     diplomados,
+    cursos,
+    certificados,
     experienciasDocentes,
     logrosRelevantes,
     diseniosCurriculares,
@@ -103,6 +121,8 @@ const construirExpedienteEmpleado = async (req, empCod) => {
     empleadosQueries.listarGradosAcademicosEmpleado(empCod),
     empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod),
     empleadosQueries.listarDiplomadosEmpleado(empCod),
+    empleadosQueries.listarCursosEmpleado(empCod),
+    empleadosQueries.listarCertificadosEmpleado(empCod),
     empleadosQueries.listarExperienciasDocentesEmpleado(empCod),
     empleadosQueries.listarLogrosRelevantesEmpleado(empCod),
     empleadosQueries.listarDiseniosCurricularesEmpleado(empCod),
@@ -155,6 +175,26 @@ const construirExpedienteEmpleado = async (req, empCod) => {
           ]
         : []
     ),
+    ...(cursos || []).flatMap((item) =>
+      item.RutaDocumentoAdjunto
+        ? [
+            mapearArchivo(req, "cursoAdjunto", item.RutaDocumentoAdjunto, {
+              id: item.IdEmpleadoCurso,
+              titulo: item.NombreCurso ?? null
+            })
+          ]
+        : []
+    ),
+    ...(certificados || []).flatMap((item) =>
+      item.RutaDocumentoAdjunto
+        ? [
+            mapearArchivo(req, "certificadoAdjunto", item.RutaDocumentoAdjunto, {
+              id: item.IdEmpleadoCertificado,
+              titulo: item.NombreCertificado ?? null
+            })
+          ]
+        : []
+    ),
     ...(logrosRelevantes || []).flatMap((item) =>
       item.RutaDocumentoAdjunto
         ? [
@@ -172,6 +212,8 @@ const construirExpedienteEmpleado = async (req, empCod) => {
     gradosAcademicos: gradosAcademicos || [],
     experienciasProfesionales: experienciasProfesionales || [],
     diplomados: diplomados || [],
+    cursos: cursos || [],
+    certificados: certificados || [],
     experienciasDocentes: experienciasDocentes || [],
     logrosRelevantes: logrosRelevantes || [],
     diseniosCurriculares: diseniosCurriculares || [],
@@ -987,7 +1029,8 @@ const crearDiplomado = async (req, res) => {
   } catch (error) {
     const status =
       error.message.includes("no existe") ||
-      error.message.includes("Debes adjuntar")
+      error.message.includes("Debes adjuntar") ||
+      error.message.includes("Debes ingresar")
         ? 400
         : 500;
 
@@ -1024,7 +1067,11 @@ const actualizarDiplomado = async (req, res) => {
       data: diplomado
     });
   } catch (error) {
-    const status = error.message.includes("no existe") ? 400 : 500;
+    const status =
+      error.message.includes("no existe") ||
+      error.message.includes("Debes ingresar")
+        ? 400
+        : 500;
 
     res.status(status).json({
       ok: false,
@@ -1058,6 +1105,319 @@ const eliminarDiplomado = async (req, res) => {
     res.status(500).json({
       ok: false,
       message: "Error al eliminar el diplomado",
+      error: error.message
+    });
+  }
+};
+
+const listarCursos = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const cursos = await empleadosQueries.listarCursosEmpleado(empCod);
+
+    if (!cursos) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Cursos obtenidos correctamente",
+      data: cursos
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los cursos",
+      error: error.message
+    });
+  }
+};
+
+const crearCurso = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const curso = await empleadosQueries.crearCursoEmpleado(
+      empCod,
+      payload,
+      req.file || null
+    );
+
+    if (!curso) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Curso guardado correctamente",
+      data: curso
+    });
+  } catch (error) {
+    const status =
+      error.message.includes("Debes ingresar") ||
+      error.message.includes("Debes adjuntar")
+        ? 400
+        : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar el curso",
+      error: error.message
+    });
+  }
+};
+
+const actualizarCurso = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCurso } = req.params;
+    const payload = req.body || {};
+    const idCursoNormalizado = resolverIdNumerico(
+      idEmpleadoCurso,
+      payload.idEmpleadoCurso,
+      payload.IdEmpleadoCurso,
+      payload.id
+    );
+
+    if (!idCursoNormalizado) {
+      return res.status(400).json({
+        ok: false,
+        message: "Id de curso invalido"
+      });
+    }
+
+    const curso = await empleadosQueries.actualizarCursoEmpleado(
+      empCod,
+      idCursoNormalizado,
+      payload,
+      req.file || null
+    );
+
+    if (!curso) {
+      return res.status(404).json({
+        ok: false,
+        message: "Curso no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Curso actualizado correctamente",
+      data: curso
+    });
+  } catch (error) {
+    const status = error.message.includes("Debes ingresar") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar el curso",
+      error: error.message
+    });
+  }
+};
+
+const eliminarCurso = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCurso } = req.params;
+    const payload = req.body || {};
+    const idCursoNormalizado = resolverIdNumerico(
+      idEmpleadoCurso,
+      payload.idEmpleadoCurso,
+      payload.IdEmpleadoCurso,
+      payload.id
+    );
+
+    if (!idCursoNormalizado) {
+      return res.status(400).json({
+        ok: false,
+        message: "Id de curso invalido"
+      });
+    }
+
+    const eliminado = await empleadosQueries.eliminarCursoEmpleado(
+      empCod,
+      idCursoNormalizado
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Curso no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Curso eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el curso",
+      error: error.message
+    });
+  }
+};
+
+const listarCertificados = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const certificados =
+      await empleadosQueries.listarCertificadosEmpleado(empCod);
+
+    if (!certificados) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Certificados obtenidos correctamente",
+      data: certificados
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los certificados",
+      error: error.message
+    });
+  }
+};
+
+const crearCertificado = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const certificado = await empleadosQueries.crearCertificadoEmpleado(
+      empCod,
+      payload,
+      req.file || null
+    );
+
+    if (!certificado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Certificado guardado correctamente",
+      data: certificado
+    });
+  } catch (error) {
+    const status =
+      error.message.includes("Debes ingresar") ||
+      error.message.includes("Debes adjuntar")
+        ? 400
+        : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar el certificado",
+      error: error.message
+    });
+  }
+};
+
+const actualizarCertificado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCertificado } = req.params;
+    const payload = req.body || {};
+    const idCertificadoNormalizado = resolverIdNumerico(
+      idEmpleadoCertificado,
+      payload.idEmpleadoCertificado,
+      payload.IdEmpleadoCertificado,
+      payload.id
+    );
+
+    if (!idCertificadoNormalizado) {
+      return res.status(400).json({
+        ok: false,
+        message: "Id de certificado invalido"
+      });
+    }
+
+    const certificado = await empleadosQueries.actualizarCertificadoEmpleado(
+      empCod,
+      idCertificadoNormalizado,
+      payload,
+      req.file || null
+    );
+
+    if (!certificado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Certificado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Certificado actualizado correctamente",
+      data: certificado
+    });
+  } catch (error) {
+    const status = error.message.includes("Debes ingresar") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar el certificado",
+      error: error.message
+    });
+  }
+};
+
+const eliminarCertificado = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoCertificado } = req.params;
+    const payload = req.body || {};
+    const idCertificadoNormalizado = resolverIdNumerico(
+      idEmpleadoCertificado,
+      payload.idEmpleadoCertificado,
+      payload.IdEmpleadoCertificado,
+      payload.id
+    );
+
+    if (!idCertificadoNormalizado) {
+      return res.status(400).json({
+        ok: false,
+        message: "Id de certificado invalido"
+      });
+    }
+
+    const eliminado = await empleadosQueries.eliminarCertificadoEmpleado(
+      empCod,
+      idCertificadoNormalizado
+    );
+
+    if (!eliminado) {
+      return res.status(404).json({
+        ok: false,
+        message: "Certificado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Certificado eliminado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar el certificado",
       error: error.message
     });
   }
@@ -2663,6 +3023,14 @@ module.exports = {
   crearDiplomado,
   actualizarDiplomado,
   eliminarDiplomado,
+  listarCursos,
+  crearCurso,
+  actualizarCurso,
+  eliminarCurso,
+  listarCertificados,
+  crearCertificado,
+  actualizarCertificado,
+  eliminarCertificado,
   listarExperienciasDocentes,
   crearExperienciaDocente,
   actualizarExperienciaDocente,

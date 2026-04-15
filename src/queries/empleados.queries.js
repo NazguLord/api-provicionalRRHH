@@ -29,6 +29,30 @@ const obtenerCampoPayload = (payload = {}, llaveCamel, llavePascal) => {
   return undefined;
 };
 
+const enriquecerRegistroCurso = (curso = null) => {
+  if (!curso) {
+    return null;
+  }
+
+  return {
+    ...curso,
+    id: curso.IdEmpleadoCurso ?? null,
+    idEmpleadoCurso: curso.IdEmpleadoCurso ?? null
+  };
+};
+
+const enriquecerRegistroCertificado = (certificado = null) => {
+  if (!certificado) {
+    return null;
+  }
+
+  return {
+    ...certificado,
+    id: certificado.IdEmpleadoCertificado ?? null,
+    idEmpleadoCertificado: certificado.IdEmpleadoCertificado ?? null
+  };
+};
+
 const normalizarValorLegacy = (valor) => {
   const texto = normalizarTexto(valor);
 
@@ -337,6 +361,7 @@ const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "IdTipoEmpleado",
   "CodigoCampus",
   "LugarNacimiento",
+  "Nacionalidad",
   "Activo",
   "RutaImagenPerfil",
   "RutaHojaVida",
@@ -456,10 +481,15 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
         e.SegundoApellido
       ) AS NombreCompleto,
       e.IdTipoEmpleado,
-      cte.NombreTipoEmpleado
+      cte.NombreTipoEmpleado,
+      e.Genero,
+      e.CodigoCampus,
+      c.NombreCampus
     FROM TB_Empleados e
     LEFT JOIN TB_CatTipoEmpleado cte
       ON cte.IdTipoEmpleado = e.IdTipoEmpleado
+    LEFT JOIN TB_CatCampus c
+      ON c.IdCampus = e.CodigoCampus
     WHERE ${whereSql}
     ORDER BY NombreCompleto ASC
     LIMIT ?
@@ -634,6 +664,7 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       e.IdTipoEmpleado,
       e.CodigoCampus,
       e.LugarNacimiento,
+      e.Nacionalidad,
       e.RutaImagenPerfil,
       e.RutaHojaVida,
       e.RutaDocumentoIdentidad,
@@ -710,6 +741,9 @@ const mapearFormularioInformacionPersonal = (empleado = {}) => {
     AnioVehiculo: empleado.AnioVehiculo ?? null,
     IdTipoSangre: empleado.IdTipoSangre ?? null,
     NombreTipoSangre: empleado.NombreTipoSangre ?? null,
+    Genero: empleado.Genero ?? null,
+    LugarNacimiento: empleado.LugarNacimiento ?? null,
+    Nacionalidad: empleado.Nacionalidad ?? null,
     inicializado: Boolean(empleado.inicializado),
     origen: empleado.origen ?? "nuevo"
   };
@@ -836,6 +870,9 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     LugarNacimiento: normalizarTexto(
       payload.lugarNacimiento ?? legacy.EmpNac
     ),
+    Nacionalidad: normalizarTexto(
+      payload.nacionalidad ?? payload.Nacionalidad
+    ),
     RutaImagenPerfil: normalizarTexto(payload.rutaImagenPerfil),
     RutaHojaVida: normalizarTexto(payload.rutaHojaVida),
     RutaDocumentoIdentidad: normalizarTexto(payload.rutaDocumentoIdentidad),
@@ -898,6 +935,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
     datos.IdTipoEmpleado,
     datos.CodigoCampus,
     datos.LugarNacimiento,
+    datos.Nacionalidad,
     datos.RutaImagenPerfil,
     datos.RutaHojaVida,
     datos.RutaDocumentoIdentidad,
@@ -946,6 +984,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       IdTipoEmpleado,
       CodigoCampus,
       LugarNacimiento,
+      Nacionalidad,
       RutaImagenPerfil,
       RutaHojaVida,
       RutaDocumentoIdentidad,
@@ -991,6 +1030,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       IdTipoEmpleado = VALUES(IdTipoEmpleado),
       CodigoCampus = VALUES(CodigoCampus),
       LugarNacimiento = VALUES(LugarNacimiento),
+      Nacionalidad = VALUES(Nacionalidad),
       RutaImagenPerfil = VALUES(RutaImagenPerfil),
       RutaHojaVida = VALUES(RutaHojaVida),
       RutaDocumentoIdentidad = VALUES(RutaDocumentoIdentidad),
@@ -1148,6 +1188,8 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
     CodigoCampus: "CodigoCampus",
     lugarNacimiento: "LugarNacimiento",
     LugarNacimiento: "LugarNacimiento",
+    nacionalidad: "Nacionalidad",
+    Nacionalidad: "Nacionalidad",
     rutaImagenPerfil: "RutaImagenPerfil",
     RutaImagenPerfil: "RutaImagenPerfil",
     rutaHojaVida: "RutaHojaVida",
@@ -1579,10 +1621,10 @@ const listarGradosAcademicosEmpleado = async (empCod) => {
       ega.NombreGradoAcademico,
       ega.Titulo,
       ega.EstadoAcademico,
+      ega.AnioInicio,
       ega.AnioGraduacion,
       ega.RutaDocumentoAdjunto,
       ega.InstitucionEducativa,
-      ega.FechaInicio,
       ega.FechaFin,
       ega.Graduado,
       ega.Activo,
@@ -1597,7 +1639,16 @@ const listarGradosAcademicosEmpleado = async (empCod) => {
       ON cea.IdEstadoAcademico = ega.IdEstadoAcademico
     WHERE ega.CodigoEmpleado = ?
       AND ega.Activo = 1
-    ORDER BY ega.IdEmpleadoGradoAcademico DESC
+    ORDER BY
+      CASE
+        WHEN UPPER(
+          TRIM(COALESCE(ega.EstadoAcademico, cea.NombreEstadoAcademico, ''))
+        ) = 'PASANTE'
+        THEN 0
+        ELSE 1
+      END ASC,
+      ega.AnioGraduacion DESC,
+      ega.IdEmpleadoGradoAcademico DESC
   `;
 
   return query(sql, [empleado.CodigoEmpleado]);
@@ -1642,12 +1693,13 @@ const crearGradoAcademicoEmpleado = async (empCod, payload = {}, archivo = null)
       NombreGradoAcademico,
       Titulo,
       EstadoAcademico,
+      AnioInicio,
       AnioGraduacion,
       RutaDocumentoAdjunto,
       InstitucionEducativa,
       Graduado,
       Activo
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `;
 
   const rutaDocumentoAdjunto = archivo
@@ -1669,6 +1721,7 @@ const crearGradoAcademicoEmpleado = async (empCod, payload = {}, archivo = null)
       normalizarTexto(payload.nombreGradoAcademico ?? payload.NombreGradoAcademico),
     normalizarTexto(payload.titulo ?? payload.Titulo),
     nombreEstadoAcademico,
+    payload.anioInicio ?? payload.AnioInicio ?? null,
     payload.anioGraduacion ?? payload.AnioGraduacion ?? null,
     rutaDocumentoAdjunto,
     normalizarTexto(
@@ -1689,6 +1742,7 @@ const crearGradoAcademicoEmpleado = async (empCod, payload = {}, archivo = null)
         ega.NombreGradoAcademico,
         ega.Titulo,
         ega.EstadoAcademico,
+        ega.AnioInicio,
         ega.AnioGraduacion,
         ega.RutaDocumentoAdjunto,
         ega.InstitucionEducativa,
@@ -1782,6 +1836,7 @@ const actualizarGradoAcademicoEmpleado = async (
         NombreGradoAcademico = ?,
         Titulo = ?,
         EstadoAcademico = ?,
+        AnioInicio = ?,
         AnioGraduacion = ?,
         RutaDocumentoAdjunto = ?,
         InstitucionEducativa = ?,
@@ -1799,6 +1854,7 @@ const actualizarGradoAcademicoEmpleado = async (
         actual.NombreGradoAcademico,
       normalizarTexto(payload.titulo ?? payload.Titulo) || actual.Titulo,
       nombreEstadoAcademico,
+      payload.anioInicio ?? payload.AnioInicio ?? actual.AnioInicio,
       payload.anioGraduacion ?? payload.AnioGraduacion ?? actual.AnioGraduacion,
       rutaDocumentoAdjunto,
       normalizarTexto(
@@ -1822,6 +1878,7 @@ const actualizarGradoAcademicoEmpleado = async (
         ega.NombreGradoAcademico,
         ega.Titulo,
         ega.EstadoAcademico,
+        ega.AnioInicio,
         ega.AnioGraduacion,
         ega.RutaDocumentoAdjunto,
         ega.InstitucionEducativa,
@@ -1877,6 +1934,179 @@ const obtenerTipoDiplomadoPorId = async (idTipoDiplomado) => {
 
   const rows = await query(sql, [idTipoDiplomado]);
   return rows[0] || null;
+};
+
+const obtenerTipoDiplomadoPorNombre = async (nombreTipoDiplomado) => {
+  const nombreNormalizado = normalizarTexto(nombreTipoDiplomado);
+
+  if (!nombreNormalizado) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      IdTipoDiplomado,
+      NombreTipoDiplomado
+    FROM TB_CatTipoDiplomado
+    WHERE UPPER(TRIM(NombreTipoDiplomado)) = UPPER(TRIM(?))
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [nombreNormalizado]);
+  return rows[0] || null;
+};
+
+const normalizarIdTipoDiplomado = (valor, payload = {}, valorActual = null) => {
+  if (valor === undefined) {
+    return valorActual;
+  }
+
+  const texto = normalizarTexto(valor);
+
+  if (!texto) {
+    return null;
+  }
+
+  if (texto.toUpperCase() === "OTRO" || texto.toUpperCase() === "OTROS") {
+    return null;
+  }
+
+  const nombreTipoDiplomado = normalizarTexto(
+    payload.nombreTipoDiplomado ?? payload.NombreTipoDiplomado ?? payload.tipoDiplomado
+  );
+
+  if (
+    nombreTipoDiplomado?.toUpperCase() === "OTRO" ||
+    nombreTipoDiplomado?.toUpperCase() === "OTROS"
+  ) {
+    return null;
+  }
+
+  const numero = Number(texto);
+  return Number.isInteger(numero) && numero > 0 ? numero : texto;
+};
+
+const esTipoDiplomadoOtro = (tipoDiplomado = null, payload = {}) => {
+  const nombreTipoDiplomado =
+    normalizarTexto(
+      tipoDiplomado?.NombreTipoDiplomado ??
+        payload.nombreTipoDiplomado ??
+        payload.NombreTipoDiplomado ??
+        payload.tipoDiplomado
+    ) || null;
+
+  const tipoNormalizado = nombreTipoDiplomado?.toUpperCase() || null;
+  return tipoNormalizado === "OTRO" || tipoNormalizado === "OTROS";
+};
+
+const resolverTipoDiplomado = async (payload = {}, valorActual = null) => {
+  const idTipoDiplomado = normalizarIdTipoDiplomado(
+    payload.idTipoDiplomado ?? payload.IdTipoDiplomado,
+    payload,
+    valorActual
+  );
+
+  if (idTipoDiplomado) {
+    const tipoDiplomado = await obtenerTipoDiplomadoPorId(idTipoDiplomado);
+
+    if (!tipoDiplomado) {
+      throw new Error("El tipo de diplomado seleccionado no existe");
+    }
+
+    return {
+      idTipoDiplomado,
+      tipoDiplomado
+    };
+  }
+
+  const nombreTipoDiplomado = normalizarTexto(
+    payload.nombreTipoDiplomado ?? payload.NombreTipoDiplomado ?? payload.tipoDiplomado
+  );
+
+  if (!nombreTipoDiplomado) {
+    return {
+      idTipoDiplomado: null,
+      tipoDiplomado: null
+    };
+  }
+
+  const tipoDiplomado = await obtenerTipoDiplomadoPorNombre(nombreTipoDiplomado);
+
+  if (!tipoDiplomado) {
+    throw new Error("El tipo de diplomado seleccionado no existe");
+  }
+
+  return {
+    idTipoDiplomado: tipoDiplomado.IdTipoDiplomado,
+    tipoDiplomado
+  };
+};
+
+const obtenerCamposDetalleDiplomado = (payload = {}, actual = null) => {
+  const nombreDiplomado =
+    normalizarTexto(
+      obtenerCampoPayload(payload, "nombreDiplomado", "NombreDiplomado") ??
+        payload.nombreDiplomadoCurso ??
+        payload.NombreDiplomadoCurso
+    ) ?? actual?.NombreDiplomado ?? null;
+  const institucion =
+    normalizarTexto(
+      obtenerCampoPayload(payload, "institucion", "Institucion")
+    ) ?? actual?.Institucion ?? null;
+  const numeroHoras =
+    obtenerCampoPayload(payload, "numeroHoras", "NumeroHoras") ??
+    obtenerCampoPayload(payload, "numeroHorasFormacion", "NumeroHorasFormacion") ??
+    actual?.NumeroHoras ??
+    null;
+  const fechaInicio = normalizarFechaOpcional(
+    obtenerCampoPayload(payload, "fechaInicio", "FechaInicio"),
+    actual?.FechaInicio ?? null
+  );
+  const fechaFinal = normalizarFechaOpcional(
+    obtenerCampoPayload(payload, "fechaFinal", "FechaFinal"),
+    actual?.FechaFinal ?? null
+  );
+
+  return {
+    nombreDiplomado,
+    institucion,
+    numeroHoras:
+      numeroHoras === undefined || numeroHoras === null || numeroHoras === ""
+        ? null
+        : Number(numeroHoras),
+    fechaInicio,
+    fechaFinal
+  };
+};
+
+const validarCamposDetalleDiplomado = (camposDetalle = {}) => {
+  const {
+    nombreDiplomado,
+    institucion,
+    numeroHoras,
+    fechaInicio,
+    fechaFinal
+  } = camposDetalle;
+
+  if (!nombreDiplomado) {
+    throw new Error("Debes ingresar el nombre del diplomado o curso");
+  }
+
+  if (!institucion) {
+    throw new Error("Debes ingresar la institucion del diplomado");
+  }
+
+  if (numeroHoras === null || Number.isNaN(numeroHoras) || numeroHoras <= 0) {
+    throw new Error("Debes ingresar un numero de horas valido");
+  }
+
+  if (!fechaInicio) {
+    throw new Error("Debes ingresar la fecha de inicio del diplomado");
+  }
+
+  if (!fechaFinal) {
+    throw new Error("Debes ingresar la fecha final del diplomado");
+  }
 };
 
 const obtenerNivelExperienciaDocentePorId = async (idNivelExperienciaDocente) => {
@@ -2726,6 +2956,11 @@ const listarDiplomadosEmpleado = async (empCod) => {
       ed.IdEmpleadoDiplomado,
       ed.CodigoEmpleado,
       ed.IdTipoDiplomado,
+      ed.NombreDiplomado,
+      ed.Institucion,
+      ed.NumeroHoras,
+      ed.FechaInicio,
+      ed.FechaFinal,
       ed.RutaDocumentoAdjunto,
       ed.Activo,
       ed.FechaCreacion,
@@ -2749,16 +2984,20 @@ const crearDiplomadoEmpleado = async (empCod, payload = {}, archivo = null) => {
     return null;
   }
 
-  const idTipoDiplomado =
-    payload.idTipoDiplomado ?? payload.IdTipoDiplomado ?? null;
-  const tipoDiplomado = await obtenerTipoDiplomadoPorId(idTipoDiplomado);
-
-  if (idTipoDiplomado && !tipoDiplomado) {
-    throw new Error("El tipo de diplomado seleccionado no existe");
-  }
+  const {
+    idTipoDiplomado,
+    tipoDiplomado
+  } = await resolverTipoDiplomado(payload);
 
   if (!archivo) {
     throw new Error("Debes adjuntar el documento del diplomado");
+  }
+
+  const esOtro = esTipoDiplomadoOtro(tipoDiplomado, payload);
+  const camposDetalle = obtenerCamposDetalleDiplomado(payload);
+
+  if (esOtro) {
+    validarCamposDetalleDiplomado(camposDetalle);
   }
 
   const sql = `
@@ -2766,9 +3005,14 @@ const crearDiplomadoEmpleado = async (empCod, payload = {}, archivo = null) => {
       IdEmpleado,
       CodigoEmpleado,
       IdTipoDiplomado,
+      NombreDiplomado,
+      Institucion,
+      NumeroHoras,
+      FechaInicio,
+      FechaFinal,
       RutaDocumentoAdjunto,
       Activo
-    ) VALUES (?, ?, ?, ?, 1)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `;
 
   const rutaDocumentoAdjunto =
@@ -2778,6 +3022,11 @@ const crearDiplomadoEmpleado = async (empCod, payload = {}, archivo = null) => {
     empleado.IdEmpleado,
     empleado.CodigoEmpleado,
     idTipoDiplomado,
+    esOtro ? camposDetalle.nombreDiplomado : null,
+    esOtro ? camposDetalle.institucion : null,
+    esOtro ? camposDetalle.numeroHoras : null,
+    esOtro ? camposDetalle.fechaInicio : null,
+    esOtro ? camposDetalle.fechaFinal : null,
     rutaDocumentoAdjunto
   ]);
 
@@ -2787,6 +3036,11 @@ const crearDiplomadoEmpleado = async (empCod, payload = {}, archivo = null) => {
         ed.IdEmpleadoDiplomado,
         ed.CodigoEmpleado,
         ed.IdTipoDiplomado,
+        ed.NombreDiplomado,
+        ed.Institucion,
+        ed.NumeroHoras,
+        ed.FechaInicio,
+        ed.FechaFinal,
         ed.RutaDocumentoAdjunto,
         ed.Activo,
         ed.FechaCreacion,
@@ -2835,14 +3089,16 @@ const actualizarDiplomadoEmpleado = async (
     return null;
   }
 
-  const idTipoDiplomado =
-    payload.idTipoDiplomado ??
-    payload.IdTipoDiplomado ??
-    actual.IdTipoDiplomado;
-  const tipoDiplomado = await obtenerTipoDiplomadoPorId(idTipoDiplomado);
+  const {
+    idTipoDiplomado,
+    tipoDiplomado
+  } = await resolverTipoDiplomado(payload, actual.IdTipoDiplomado);
 
-  if (idTipoDiplomado && !tipoDiplomado) {
-    throw new Error("El tipo de diplomado seleccionado no existe");
+  const esOtro = esTipoDiplomadoOtro(tipoDiplomado, payload);
+  const camposDetalle = obtenerCamposDetalleDiplomado(payload, actual);
+
+  if (esOtro) {
+    validarCamposDetalleDiplomado(camposDetalle);
   }
 
   const rutaDocumentoAdjunto = archivo
@@ -2854,12 +3110,22 @@ const actualizarDiplomadoEmpleado = async (
       UPDATE TB_EmpleadoDiplomado
       SET
         IdTipoDiplomado = ?,
+        NombreDiplomado = ?,
+        Institucion = ?,
+        NumeroHoras = ?,
+        FechaInicio = ?,
+        FechaFinal = ?,
         RutaDocumentoAdjunto = ?
       WHERE IdEmpleadoDiplomado = ?
         AND CodigoEmpleado = ?
     `,
     [
       idTipoDiplomado,
+      esOtro ? camposDetalle.nombreDiplomado : null,
+      esOtro ? camposDetalle.institucion : null,
+      esOtro ? camposDetalle.numeroHoras : null,
+      esOtro ? camposDetalle.fechaInicio : null,
+      esOtro ? camposDetalle.fechaFinal : null,
       rutaDocumentoAdjunto,
       idEmpleadoDiplomado,
       empleado.CodigoEmpleado
@@ -2872,6 +3138,11 @@ const actualizarDiplomadoEmpleado = async (
         ed.IdEmpleadoDiplomado,
         ed.CodigoEmpleado,
         ed.IdTipoDiplomado,
+        ed.NombreDiplomado,
+        ed.Institucion,
+        ed.NumeroHoras,
+        ed.FechaInicio,
+        ed.FechaFinal,
         ed.RutaDocumentoAdjunto,
         ed.Activo,
         ed.FechaCreacion,
@@ -2904,6 +3175,388 @@ const eliminarDiplomadoEmpleado = async (empCod, idEmpleadoDiplomado) => {
   `;
 
   const result = await query(sql, [idEmpleadoDiplomado, empleado.CodigoEmpleado]);
+
+  return result.affectedRows > 0;
+};
+
+const listarCursosEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      ec.IdEmpleadoCurso,
+      ec.IdEmpleado,
+      ec.CodigoEmpleado,
+      ec.NombreCurso,
+      ec.RutaDocumentoAdjunto,
+      ec.Activo,
+      ec.FechaCreacion,
+      ec.FechaActualizacion
+    FROM TB_EmpleadoCursos ec
+    WHERE ec.CodigoEmpleado = ?
+      AND ec.Activo = 1
+    ORDER BY ec.IdEmpleadoCurso DESC
+  `;
+
+  const rows = await query(sql, [empleado.CodigoEmpleado]);
+  return rows.map(enriquecerRegistroCurso);
+};
+
+const crearCursoEmpleado = async (empCod, payload = {}, archivo = null) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const nombreCurso = normalizarTexto(
+    obtenerCampoPayload(payload, "nombreCurso", "NombreCurso")
+  );
+
+  if (!nombreCurso) {
+    throw new Error("Debes ingresar el nombre del curso");
+  }
+
+  if (!archivo) {
+    throw new Error("Debes adjuntar el documento del curso");
+  }
+
+  const rutaDocumentoAdjunto = `/data/empleados/${empCod}/cursos/${archivo.filename}`;
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoCursos (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombreCurso,
+        RutaDocumentoAdjunto,
+        Activo
+      ) VALUES (?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      nombreCurso,
+      rutaDocumentoAdjunto
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        ec.IdEmpleadoCurso,
+        ec.IdEmpleado,
+        ec.CodigoEmpleado,
+        ec.NombreCurso,
+        ec.RutaDocumentoAdjunto,
+        ec.Activo,
+        ec.FechaCreacion,
+        ec.FechaActualizacion
+      FROM TB_EmpleadoCursos ec
+      WHERE ec.IdEmpleadoCurso = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return enriquecerRegistroCurso(rows[0] || null);
+};
+
+const actualizarCursoEmpleado = async (
+  empCod,
+  idEmpleadoCurso,
+  payload = {},
+  archivo = null
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoCursos
+      WHERE IdEmpleadoCurso = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoCurso, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const nombreCurso =
+    normalizarTexto(obtenerCampoPayload(payload, "nombreCurso", "NombreCurso")) ||
+    actual.NombreCurso;
+
+  if (!nombreCurso) {
+    throw new Error("Debes ingresar el nombre del curso");
+  }
+
+  const rutaDocumentoAdjunto = archivo
+    ? `/data/empleados/${empCod}/cursos/${archivo.filename}`
+    : actual.RutaDocumentoAdjunto;
+
+  await query(
+    `
+      UPDATE TB_EmpleadoCursos
+      SET
+        NombreCurso = ?,
+        RutaDocumentoAdjunto = ?
+      WHERE IdEmpleadoCurso = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      nombreCurso,
+      rutaDocumentoAdjunto,
+      idEmpleadoCurso,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        ec.IdEmpleadoCurso,
+        ec.IdEmpleado,
+        ec.CodigoEmpleado,
+        ec.NombreCurso,
+        ec.RutaDocumentoAdjunto,
+        ec.Activo,
+        ec.FechaCreacion,
+        ec.FechaActualizacion
+      FROM TB_EmpleadoCursos ec
+      WHERE ec.IdEmpleadoCurso = ?
+      LIMIT 1
+    `,
+    [idEmpleadoCurso]
+  );
+
+  return enriquecerRegistroCurso(rows[0] || null);
+};
+
+const eliminarCursoEmpleado = async (empCod, idEmpleadoCurso) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoCursos
+      SET Activo = 0
+      WHERE IdEmpleadoCurso = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoCurso, empleado.CodigoEmpleado]
+  );
+
+  return result.affectedRows > 0;
+};
+
+const listarCertificadosEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rows = await query(
+    `
+      SELECT
+        ec.IdEmpleadoCertificado,
+        ec.IdEmpleado,
+        ec.CodigoEmpleado,
+        ec.NombreCertificado,
+        ec.RutaDocumentoAdjunto,
+        ec.Activo,
+        ec.FechaCreacion,
+        ec.FechaActualizacion
+      FROM TB_EmpleadoCertificados ec
+      WHERE ec.CodigoEmpleado = ?
+        AND ec.Activo = 1
+      ORDER BY ec.IdEmpleadoCertificado DESC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  return rows.map(enriquecerRegistroCertificado);
+};
+
+const crearCertificadoEmpleado = async (empCod, payload = {}, archivo = null) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const nombreCertificado = normalizarTexto(
+    obtenerCampoPayload(payload, "nombreCertificado", "NombreCertificado") ??
+      obtenerCampoPayload(payload, "nombreCertificacion", "NombreCertificacion")
+  );
+
+  if (!nombreCertificado) {
+    throw new Error("Debes ingresar el nombre del certificado");
+  }
+
+  if (!archivo) {
+    throw new Error("Debes adjuntar el documento del certificado");
+  }
+
+  const rutaDocumentoAdjunto =
+    `/data/empleados/${empCod}/certificados/${archivo.filename}`;
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoCertificados (
+        IdEmpleado,
+        CodigoEmpleado,
+        NombreCertificado,
+        RutaDocumentoAdjunto,
+        Activo
+      ) VALUES (?, ?, ?, ?, 1)
+    `,
+    [
+      empleado.IdEmpleado,
+      empleado.CodigoEmpleado,
+      nombreCertificado,
+      rutaDocumentoAdjunto
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        ec.IdEmpleadoCertificado,
+        ec.IdEmpleado,
+        ec.CodigoEmpleado,
+        ec.NombreCertificado,
+        ec.RutaDocumentoAdjunto,
+        ec.Activo,
+        ec.FechaCreacion,
+        ec.FechaActualizacion
+      FROM TB_EmpleadoCertificados ec
+      WHERE ec.IdEmpleadoCertificado = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return enriquecerRegistroCertificado(rows[0] || null);
+};
+
+const actualizarCertificadoEmpleado = async (
+  empCod,
+  idEmpleadoCertificado,
+  payload = {},
+  archivo = null
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoCertificados
+      WHERE IdEmpleadoCertificado = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoCertificado, empleado.CodigoEmpleado]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return null;
+  }
+
+  const nombreCertificado =
+    normalizarTexto(
+      obtenerCampoPayload(payload, "nombreCertificado", "NombreCertificado") ??
+        obtenerCampoPayload(payload, "nombreCertificacion", "NombreCertificacion")
+    ) || actual.NombreCertificado;
+
+  if (!nombreCertificado) {
+    throw new Error("Debes ingresar el nombre del certificado");
+  }
+
+  const rutaDocumentoAdjunto = archivo
+    ? `/data/empleados/${empCod}/certificados/${archivo.filename}`
+    : actual.RutaDocumentoAdjunto;
+
+  await query(
+    `
+      UPDATE TB_EmpleadoCertificados
+      SET
+        NombreCertificado = ?,
+        RutaDocumentoAdjunto = ?
+      WHERE IdEmpleadoCertificado = ?
+        AND CodigoEmpleado = ?
+    `,
+    [
+      nombreCertificado,
+      rutaDocumentoAdjunto,
+      idEmpleadoCertificado,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        ec.IdEmpleadoCertificado,
+        ec.IdEmpleado,
+        ec.CodigoEmpleado,
+        ec.NombreCertificado,
+        ec.RutaDocumentoAdjunto,
+        ec.Activo,
+        ec.FechaCreacion,
+        ec.FechaActualizacion
+      FROM TB_EmpleadoCertificados ec
+      WHERE ec.IdEmpleadoCertificado = ?
+      LIMIT 1
+    `,
+    [idEmpleadoCertificado]
+  );
+
+  return enriquecerRegistroCertificado(rows[0] || null);
+};
+
+const eliminarCertificadoEmpleado = async (empCod, idEmpleadoCertificado) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoCertificados
+      SET Activo = 0
+      WHERE IdEmpleadoCertificado = ?
+        AND CodigoEmpleado = ?
+    `,
+    [idEmpleadoCertificado, empleado.CodigoEmpleado]
+  );
 
   return result.affectedRows > 0;
 };
@@ -4893,6 +5546,14 @@ module.exports = {
   crearDiplomadoEmpleado,
   actualizarDiplomadoEmpleado,
   eliminarDiplomadoEmpleado,
+  listarCursosEmpleado,
+  crearCursoEmpleado,
+  actualizarCursoEmpleado,
+  eliminarCursoEmpleado,
+  listarCertificadosEmpleado,
+  crearCertificadoEmpleado,
+  actualizarCertificadoEmpleado,
+  eliminarCertificadoEmpleado,
   listarExperienciasDocentesEmpleado,
   crearExperienciaDocenteEmpleado,
   actualizarExperienciaDocenteEmpleado,

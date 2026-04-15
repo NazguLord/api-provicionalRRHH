@@ -266,6 +266,24 @@ const listarCampus = async (req, res) => {
   }
 };
 
+const listarUniversidades = async (req, res) => {
+  try {
+    const universidades = await catalogosQueries.listarUniversidades();
+
+    res.json({
+      ok: true,
+      message: "Universidades obtenidas correctamente",
+      data: universidades
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las universidades",
+      error: error.message
+    });
+  }
+};
+
 const listarAreasInteresDocencia = async (req, res) => {
   try {
     const areasInteresDocencia =
@@ -300,5 +318,6 @@ module.exports = {
   listarMetodologiasActivas,
   listarPlataformasVirtualesEducativas,
   listarCampus,
+  listarUniversidades,
   listarAreasInteresDocencia
 };

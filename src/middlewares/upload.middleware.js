@@ -82,6 +82,50 @@ const storageDiplomado = multer.diskStorage({
   }
 });
 
+const storageCurso = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const { empCod } = req.params;
+    const destino = path.join(
+      __dirname,
+      "..",
+      "..",
+      "data",
+      "empleados",
+      String(empCod),
+      "cursos"
+    );
+
+    fs.mkdirSync(destino, { recursive: true });
+    cb(null, destino);
+  },
+  filename: (req, file, cb) => {
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    cb(null, `curso-${Date.now()}${extension}`);
+  }
+});
+
+const storageCertificado = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const { empCod } = req.params;
+    const destino = path.join(
+      __dirname,
+      "..",
+      "..",
+      "data",
+      "empleados",
+      String(empCod),
+      "certificados"
+    );
+
+    fs.mkdirSync(destino, { recursive: true });
+    cb(null, destino);
+  },
+  filename: (req, file, cb) => {
+    const extension = path.extname(file.originalname || "").toLowerCase();
+    cb(null, `certificado-${Date.now()}${extension}`);
+  }
+});
+
 const storageLogroRelevante = multer.diskStorage({
   destination: (req, file, cb) => {
     const { empCod } = req.params;
@@ -138,6 +182,22 @@ const uploadDiplomadoAdjunto = multer({
   }
 });
 
+const uploadCursoAdjunto = multer({
+  storage: storageCurso,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
+});
+
+const uploadCertificadoAdjunto = multer({
+  storage: storageCertificado,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
+});
+
 const uploadLogroRelevanteAdjunto = multer({
   storage: storageLogroRelevante,
   fileFilter,
@@ -150,5 +210,7 @@ module.exports = {
   uploadEmpleadoDocumento,
   uploadGradoAcademicoAdjunto,
   uploadDiplomadoAdjunto,
+  uploadCursoAdjunto,
+  uploadCertificadoAdjunto,
   uploadLogroRelevanteAdjunto
 };
