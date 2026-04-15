@@ -395,6 +395,24 @@ const listarColaboradoresCompletos = async (req, res) => {
   }
 };
 
+const obtenerResumenDashboard = async (req, res) => {
+  try {
+    const data = await empleadosQueries.obtenerResumenDashboardColaboradores();
+
+    res.json({
+      ok: true,
+      message: "Resumen de dashboard obtenido correctamente",
+      data
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener el resumen del dashboard",
+      error: error.message
+    });
+  }
+};
+
 const guardarInformacionPersonal = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -3002,6 +3020,7 @@ module.exports = {
   previewArchivoEmpleado,
   listarColaboradores,
   listarColaboradoresCompletos,
+  obtenerResumenDashboard,
   guardarInformacionPersonal,
   obtenerEstadoActualizacion,
   obtenerFormularioEmpleado,

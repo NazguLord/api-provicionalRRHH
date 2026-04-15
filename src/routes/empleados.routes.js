@@ -22,6 +22,7 @@ router.get(
 router.use(authMiddleware);
 
 router.get("/", empleadosController.listarColaboradores);
+router.get("/dashboard/resumen", empleadosController.obtenerResumenDashboard);
 router.get("/completos", empleadosController.listarColaboradoresCompletos);
 router.post(
   "/:empCod/inicializar",

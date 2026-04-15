@@ -573,6 +573,33 @@ const listarColaboradoresCompletos = async ({
   return query(sql, params);
 };
 
+const obtenerResumenDashboardColaboradores = async () => {
+  const sql = `
+    select  SUM(CASE
+            WHEN EmpGen = 'M' THEN 1
+            ELSE 0
+        END) AS Masculino,
+
+        SUM(CASE
+            WHEN EmpGen = 'F' THEN 1
+            ELSE 0
+        END) AS Femenino,
+
+
+        COUNT(*) AS TotalEmpleados ,  case when e.EmpSdeCod  =  '00' then (
+    select SdeApl  from \`uch-workcloud\`.contratos where CtrEst = 'ACT'  and EmpCod =  e.EmpCod and CtrCat = 'ADMIN'
+    )   else
+    e.EmpSdeCod end Campus
+    from \`uch-workcloud\`.empleados  e
+    where e.EmpEst =   'ACT'
+    group by Campus
+    having   Campus not in(999)
+    order  by CAST(Campus AS UNSIGNED) + 0
+  `;
+
+  return query(sql);
+};
+
 const obtenerEstadoActualizacionEmpleado = async (empCod, tipoEmpleado) => {
   const tipoEmpleadoNormalizado = normalizarTipoEmpleado(tipoEmpleado);
 
@@ -2804,7 +2831,11 @@ const listarExperienciasProfesionalesEmpleado = async (empCod) => {
     FROM TB_EmpleadoExperienciaProfesional
     WHERE CodigoEmpleado = ?
       AND Activo = 1
-    ORDER BY IdEmpleadoExperienciaProfesional DESC
+    ORDER BY
+      CASE WHEN FechaHasta IS NULL THEN 0 ELSE 1 END ASC,
+      FechaHasta DESC,
+      FechaDesde DESC,
+      IdEmpleadoExperienciaProfesional DESC
   `;
 
   return query(sql, [empleado.CodigoEmpleado]);
@@ -5544,6 +5575,7 @@ module.exports = {
   obtenerPorCodigo,
   listarColaboradores,
   listarColaboradoresCompletos,
+  obtenerResumenDashboardColaboradores,
   obtenerEstadoActualizacionEmpleado,
   guardarInformacionPersonalDesdeLegacy,
   obtenerFormularioEmpleado,
