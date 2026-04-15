@@ -228,6 +228,17 @@ const listarAreasInteresDocencia = async () => {
   return query(sql);
 };
 
+const listarCursos = async () => {
+  const sql = `
+    SELECT
+      CurNomEsp
+    FROM \`uch-registro\`.cursos
+    ORDER BY CurCod ASC
+  `;
+
+  return query(sql);
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -244,5 +255,6 @@ module.exports = {
   listarPlataformasVirtualesEducativas,
   listarCampus,
   listarUniversidades,
-  listarAreasInteresDocencia
+  listarAreasInteresDocencia,
+  listarCursos
 };

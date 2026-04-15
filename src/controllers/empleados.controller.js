@@ -342,12 +342,13 @@ const previewArchivoEmpleado = async (req, res) => {
 
 const listarColaboradores = async (req, res) => {
   try {
-    const { page, limit, search } = req.query;
+    const { page, limit, search, SdeCod, sdeCod } = req.query;
 
     const resultado = await empleadosQueries.listarColaboradores({
       page,
       limit,
-      search
+      search,
+      sdeCod: SdeCod ?? sdeCod ?? null
     });
 
     res.json({
@@ -367,10 +368,11 @@ const listarColaboradores = async (req, res) => {
 
 const listarColaboradoresCompletos = async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, SdeCod, sdeCod } = req.query;
 
     const colaboradores = await empleadosQueries.listarColaboradoresCompletos({
-      search
+      search,
+      sdeCod: SdeCod ?? sdeCod ?? null
     });
     const data = await Promise.all(
       colaboradores.map((empleado) =>

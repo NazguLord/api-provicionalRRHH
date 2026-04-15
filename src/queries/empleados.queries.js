@@ -416,8 +416,9 @@ const obtenerPorCodigo = async (empCod) => {
   return rows[0] || null;
 };
 
-const construirWhereColaboradoresCompletos = (search = null) => {
+const construirWhereColaboradoresCompletos = (search = null, sdeCod = null) => {
   const textoBusqueda = normalizarTexto(search);
+  const campusFiltro = normalizarTexto(sdeCod);
   const where = [
     "e.Activo = 1",
     `(
@@ -450,17 +451,30 @@ const construirWhereColaboradoresCompletos = (search = null) => {
     );
   }
 
+  if (campusFiltro) {
+    where.push("e.CodigoCampus = ?");
+    params.push(campusFiltro);
+  }
+
   return {
     whereSql: where.join(" AND "),
     params
   };
 };
 
-const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {}) => {
+const listarColaboradores = async ({
+  page = 1,
+  limit = 10,
+  search = null,
+  sdeCod = null
+} = {}) => {
   const pageNumber = Number(page) > 0 ? Number(page) : 1;
   const limitNumber = Number(limit) > 0 ? Number(limit) : 10;
   const offset = (pageNumber - 1) * limitNumber;
-  const { whereSql, params } = construirWhereColaboradoresCompletos(search);
+  const { whereSql, params } = construirWhereColaboradoresCompletos(
+    search,
+    sdeCod
+  );
 
   const sqlDatos = `
     SELECT
@@ -489,7 +503,7 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
     LEFT JOIN TB_CatTipoEmpleado cte
       ON cte.IdTipoEmpleado = e.IdTipoEmpleado
     LEFT JOIN TB_CatCampus c
-      ON c.IdCampus = e.CodigoCampus
+      ON c.SdeCod = e.CodigoCampus
     WHERE ${whereSql}
     ORDER BY NombreCompleto ASC
     LIMIT ?
@@ -520,8 +534,14 @@ const listarColaboradores = async ({ page = 1, limit = 10, search = null } = {})
   };
 };
 
-const listarColaboradoresCompletos = async ({ search = null } = {}) => {
-  const { whereSql, params } = construirWhereColaboradoresCompletos(search);
+const listarColaboradoresCompletos = async ({
+  search = null,
+  sdeCod = null
+} = {}) => {
+  const { whereSql, params } = construirWhereColaboradoresCompletos(
+    search,
+    sdeCod
+  );
 
   const sql = `
     SELECT

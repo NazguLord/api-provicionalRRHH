@@ -303,6 +303,24 @@ const listarAreasInteresDocencia = async (req, res) => {
   }
 };
 
+const listarCursos = async (req, res) => {
+  try {
+    const cursos = await catalogosQueries.listarCursos();
+
+    res.json({
+      ok: true,
+      message: "Cursos obtenidos correctamente",
+      data: cursos
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los cursos",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   listarTiposSangre,
   listarEstadosCiviles,
@@ -319,5 +337,6 @@ module.exports = {
   listarPlataformasVirtualesEducativas,
   listarCampus,
   listarUniversidades,
-  listarAreasInteresDocencia
+  listarAreasInteresDocencia,
+  listarCursos
 };

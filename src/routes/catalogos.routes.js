@@ -32,5 +32,6 @@ router.get(
   "/areas-interes-docencia",
   catalogosController.listarAreasInteresDocencia
 );
+router.get("/cursos", catalogosController.listarCursos);
 
 module.exports = router;
