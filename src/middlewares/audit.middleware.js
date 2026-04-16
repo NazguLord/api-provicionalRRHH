@@ -2,12 +2,12 @@ const { crearLogAuditoria } = require("../queries/logs.queries");
 const { logError } = require("../utils/logs");
 
 const ACCIONES_POR_METODO = {
-  GET: "CONSULTAR",
   POST: "CREAR",
   PATCH: "ACTUALIZAR",
-  PUT: "ACTUALIZAR",
-  DELETE: "ELIMINAR"
+  PUT: "ACTUALIZAR"
 };
+
+const METODOS_AUDITABLES = new Set(["POST", "PATCH", "PUT"]);
 
 const obtenerAccion = (req) => {
   const metodo = String(req.method || "GET").toUpperCase();
@@ -99,6 +99,10 @@ const obtenerIp = (req) => {
 
 const auditMiddleware = (modulo = "general") => {
   return (req, res, next) => {
+    if (!METODOS_AUDITABLES.has(String(req.method || "").toUpperCase())) {
+      return next();
+    }
+
     res.on("finish", () => {
       const estadoHttp = Number(res.statusCode || 0);
       const exitoso = estadoHttp >= 200 && estadoHttp < 400;
