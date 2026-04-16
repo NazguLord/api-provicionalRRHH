@@ -2,7 +2,9 @@ const fs = require("fs");
 const path = require("path");
 
 const empleadosQueries = require("../queries/empleados.queries");
+const { crearLogDescargaDocumento } = require("../queries/logs.queries");
 const authMiddleware = require("../middlewares/auth.middleware");
+const { logError } = require("../utils/logs");
 const {
   firmarAccesoArchivo,
   verificarAccesoArchivo
@@ -63,6 +65,173 @@ const resolverRutaArchivo = (rutaPublica) => {
 const obtenerMimeType = (rutaAbsoluta) => {
   const extension = path.extname(rutaAbsoluta || "").toLowerCase();
   return MIME_TYPES[extension] || "application/octet-stream";
+};
+
+const obtenerIp = (req) => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return req.ip || req.socket?.remoteAddress || null;
+};
+
+const obtenerUsuarioDescarga = (req) => {
+  const source = req.method === "POST" ? req.body || {} : req.query || {};
+
+  const usrId = String(
+    source.UsrId ??
+      source.usrId ??
+      source.UsrAlt ??
+      source.usrAlt ??
+      source.CodigoEmpleado ??
+      source.codigoEmpleado ??
+      ""
+  ).trim();
+
+  const usrUsr = String(source.UsrUsr ?? source.usrUsr ?? "").trim();
+  const usrNom = String(source.UsrNom ?? source.usrNom ?? "").trim();
+  const usrApe = String(source.UsrApe ?? source.usrApe ?? "").trim();
+
+  return {
+    usrId: usrId || String(req.user?.sub || "").trim() || null,
+    usrUsr: usrUsr || String(req.user?.username || "").trim() || null,
+    usrNom:
+      usrNom ||
+      String(req.user?.displayName || req.user?.username || "").trim() ||
+      null,
+    usrApe: usrApe || null
+  };
+};
+
+const obtenerTipoDescargaDesdeRuta = (rutaPublica = "") => {
+  const ruta = String(rutaPublica || "").toLowerCase();
+
+  if (ruta.includes("/datos-generales/cv-") || ruta.includes("/datos-generales/hoja-vida-")) {
+    return {
+      tipoDocumento: "CV_COLABORADOR",
+      descripcion: "Descarga de CV de colaborador"
+    };
+  }
+
+  if (ruta.includes("/datos-generales/documento-identidad-")) {
+    return {
+      tipoDocumento: "DOCUMENTO_IDENTIDAD",
+      descripcion: "Descarga de documento de identidad"
+    };
+  }
+
+  if (ruta.includes("/datos-generales/documento-colegiacion-")) {
+    return {
+      tipoDocumento: "DOCUMENTO_COLEGIACION",
+      descripcion: "Descarga de documento de colegiacion"
+    };
+  }
+
+  if (ruta.includes("/datos-generales/foto-perfil-")) {
+    return {
+      tipoDocumento: "FOTO_PERFIL",
+      descripcion: "Descarga de foto de perfil"
+    };
+  }
+
+  return {
+    tipoDocumento: "ARCHIVO_COLABORADOR",
+    descripcion: "Descarga de archivo de colaborador"
+  };
+};
+
+const registrarLogDescargaDocumento = async (
+  req,
+  {
+    descripcion,
+    tipoDocumento,
+    ruta,
+    totalRegistros = 1
+  } = {}
+) => {
+  const { usrId, usrNom, usrUsr, usrApe } = obtenerUsuarioDescarga(req);
+
+  if (!usrId && !usrUsr) {
+    return;
+  }
+
+  try {
+    await crearLogDescargaDocumento({
+      descripcion,
+      tipoDocumento,
+      ruta: ruta || req.originalUrl || req.url || "",
+      usrId: usrId || null,
+      usrNom: usrNom || null,
+      usrUsr: usrUsr || null,
+      usrApe: usrApe || null,
+      totalRegistros,
+      direccionIp: obtenerIp(req),
+      userAgent: req.headers["user-agent"] || null
+    });
+  } catch (error) {
+    logError("No se pudo registrar el log de descarga", error.message);
+  }
+};
+
+const registrarDescargaArchivoEmpleado = async (req, rutaPublica) => {
+  const { tipoDocumento, descripcion } = obtenerTipoDescargaDesdeRuta(rutaPublica);
+
+  return registrarLogDescargaDocumento(req, {
+    descripcion,
+    tipoDocumento,
+    ruta: rutaPublica || req.originalUrl || req.url || "",
+    totalRegistros: 1
+  });
+};
+
+const registrarLogDescargaExcel = async (req, res) => {
+  try {
+    const totalRegistros = Number(
+      req.body?.TotalRegistros ?? req.body?.totalRegistros ?? 1
+    );
+
+    await registrarLogDescargaDocumento(req, {
+      descripcion: "Descarga de Excel de datos del colaborador",
+      tipoDocumento: "EXCEL_DATOS_COLABORADOR",
+      ruta: "/descargas/excel-colaborador",
+      totalRegistros: Number.isFinite(totalRegistros) ? totalRegistros : 1
+    });
+
+    res.status(201).json({
+      ok: true,
+      message: "Log de descarga de Excel registrado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al registrar el log de descarga de Excel",
+      error: error.message
+    });
+  }
+};
+
+const registrarLogDescargaCv = async (req, res) => {
+  try {
+    await registrarLogDescargaDocumento(req, {
+      descripcion: "Descarga de CV del colaborador",
+      tipoDocumento: "PDF_CV_COLABORADOR",
+      ruta: "/descargas/cv-colaborador",
+      totalRegistros: 1
+    });
+
+    res.status(201).json({
+      ok: true,
+      message: "Log de descarga de CV registrado correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al registrar el log de descarga de CV",
+      error: error.message
+    });
+  }
 };
 
 const mapearArchivo = (req, nombre, ruta, extra = {}) => {
@@ -264,9 +433,14 @@ const previewArchivoEmpleado = async (req, res) => {
     const { expires, signature } = req.query;
 
     let autorizado = false;
+    let usuarioAutenticado = null;
 
     try {
-      authMiddleware.validarTokenBearer(req.headers.authorization || "");
+      usuarioAutenticado = authMiddleware.validarTokenBearer(
+        req.headers.authorization || "",
+        req.headers
+      );
+      req.user = usuarioAutenticado;
       autorizado = true;
     } catch (error) {
       autorizado = verificarAccesoArchivo({
@@ -330,6 +504,7 @@ const previewArchivoEmpleado = async (req, res) => {
     }
 
     res.setHeader("Content-Length", stat.size);
+    await registrarDescargaArchivoEmpleado(req, rutaPublica);
     return fs.createReadStream(rutaAbsoluta).pipe(res);
   } catch (error) {
     res.status(500).json({
@@ -3020,6 +3195,8 @@ module.exports = {
   previewArchivoEmpleado,
   listarColaboradores,
   listarColaboradoresCompletos,
+  registrarLogDescargaExcel,
+  registrarLogDescargaCv,
   obtenerResumenDashboard,
   guardarInformacionPersonal,
   obtenerEstadoActualizacion,

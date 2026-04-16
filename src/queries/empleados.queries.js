@@ -173,11 +173,6 @@ const CONDICION_ACTUALIZACION_ADMINISTRATIVO = `
     FROM TB_EmpleadoExperienciaProfesional ex
     WHERE ex.CodigoEmpleado = e.CodigoEmpleado
   )
-  AND EXISTS (
-    SELECT 1
-    FROM TB_EmpleadoDiplomado d
-    WHERE d.CodigoEmpleado = e.CodigoEmpleado
-  )
 `;
 
 const CONDICION_ACTUALIZACION_DOCENTE = `
@@ -480,7 +475,7 @@ const listarColaboradores = async ({
     LEFT JOIN TB_CatCampus c
       ON c.SdeCod = e.CodigoCampus
     WHERE ${whereSql}
-    ORDER BY NombreCompleto ASC
+    ORDER BY e.FechaActualizacion DESC, NombreCompleto ASC
     LIMIT ?
     OFFSET ?
   `;
@@ -542,7 +537,7 @@ const listarColaboradoresCompletos = async ({
     LEFT JOIN TB_CatTipoEmpleado cte
       ON cte.IdTipoEmpleado = e.IdTipoEmpleado
     WHERE ${whereSql}
-    ORDER BY NombreCompleto ASC
+    ORDER BY e.FechaActualizacion DESC, NombreCompleto ASC
   `;
 
   return query(sql, params);
