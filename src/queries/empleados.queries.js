@@ -189,16 +189,6 @@ const CONDICION_ACTUALIZACION_DOCENTE = `
   )
   AND EXISTS (
     SELECT 1
-    FROM TB_EmpleadoLogroRelevante lr
-    WHERE lr.CodigoEmpleado = e.CodigoEmpleado
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM TB_EmpleadoDisenioCurricular dc
-    WHERE dc.CodigoEmpleado = e.CodigoEmpleado
-  )
-  AND EXISTS (
-    SELECT 1
     FROM TB_EmpleadoConocimientoClave cc
     WHERE cc.CodigoEmpleado = e.CodigoEmpleado
   )
@@ -209,18 +199,8 @@ const CONDICION_ACTUALIZACION_DOCENTE = `
   )
   AND EXISTS (
     SELECT 1
-    FROM TB_EmpleadoProyectoExperiencia pe
-    WHERE pe.CodigoEmpleado = e.CodigoEmpleado
-  )
-  AND EXISTS (
-    SELECT 1
     FROM TB_EmpleadoExperienciaSectorProductivo esp
     WHERE esp.CodigoEmpleado = e.CodigoEmpleado
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM TB_EmpleadoVinculoIndustria vi
-    WHERE vi.CodigoEmpleado = e.CodigoEmpleado
   )
   AND EXISTS (
     SELECT 1
@@ -231,11 +211,6 @@ const CONDICION_ACTUALIZACION_DOCENTE = `
     SELECT 1
     FROM TB_EmpleadoCompetenciaDigital cd
     WHERE cd.CodigoEmpleado = e.CodigoEmpleado
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM TB_EmpleadoMetodologiaActiva ma
-    WHERE ma.CodigoEmpleado = e.CodigoEmpleado
   )
   AND EXISTS (
     SELECT 1
@@ -575,26 +550,35 @@ const listarColaboradoresCompletos = async ({
 
 const obtenerResumenDashboardColaboradores = async () => {
   const sql = `
-    select  SUM(CASE
-            WHEN EmpGen = 'M' THEN 1
-            ELSE 0
-        END) AS Masculino,
+    select resumen.*,
+      c.CamNomEsp,
+      c.CamNomEng,
+      c.CamDir,
+      c.CamAbr
+    from (
+      select  SUM(CASE
+              WHEN EmpGen = 'M' THEN 1
+              ELSE 0
+          END) AS Masculino,
 
-        SUM(CASE
-            WHEN EmpGen = 'F' THEN 1
-            ELSE 0
-        END) AS Femenino,
+          SUM(CASE
+              WHEN EmpGen = 'F' THEN 1
+              ELSE 0
+          END) AS Femenino,
 
 
-        COUNT(*) AS TotalEmpleados ,  case when e.EmpSdeCod  =  '00' then (
-    select SdeApl  from \`uch-workcloud\`.contratos where CtrEst = 'ACT'  and EmpCod =  e.EmpCod and CtrCat = 'ADMIN'
-    )   else
-    e.EmpSdeCod end Campus
-    from \`uch-workcloud\`.empleados  e
-    where e.EmpEst =   'ACT'
-    group by Campus
-    having   Campus not in(999)
-    order  by CAST(Campus AS UNSIGNED) + 0
+          COUNT(*) AS TotalEmpleados ,  case when e.EmpSdeCod  =  '00' then (
+      select SdeApl  from \`uch-workcloud\`.contratos where CtrEst = 'ACT'  and EmpCod =  e.EmpCod and CtrCat = 'ADMIN'
+      )   else
+      e.EmpSdeCod end Campus
+      from \`uch-workcloud\`.empleados  e
+      where e.EmpEst =   'ACT'
+      group by Campus
+      having   Campus not in(999)
+    ) resumen
+    left join \`uch-registro\`.campus c
+      on c.CamCod = CAST(resumen.Campus AS UNSIGNED)
+    order  by CAST(resumen.Campus AS UNSIGNED) + 0
   `;
 
   return query(sql);

@@ -197,6 +197,24 @@ const listarCampus = async () => {
   return query(sql);
 };
 
+const listarCampusRegistro = async () => {
+  const sql = `
+    SELECT
+      CamCod,
+      CamNomEsp,
+      CamNomEng,
+      CamDir,
+      CamAbr,
+      CamTel,
+      CamMail,
+      CamTip
+    FROM \`uch-registro\`.campus
+    ORDER BY CamNomEsp ASC
+  `;
+
+  return query(sql);
+};
+
 const listarUniversidades = async () => {
   const sql = `
     SELECT
@@ -254,6 +272,7 @@ module.exports = {
   listarMetodologiasActivas,
   listarPlataformasVirtualesEducativas,
   listarCampus,
+  listarCampusRegistro,
   listarUniversidades,
   listarAreasInteresDocencia,
   listarCursos

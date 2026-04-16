@@ -27,6 +27,7 @@ router.get(
   catalogosController.listarPlataformasVirtualesEducativas
 );
 router.get("/campus", catalogosController.listarCampus);
+router.get("/campus-registro", catalogosController.listarCampusRegistro);
 router.get("/universidades", catalogosController.listarUniversidades);
 router.get(
   "/areas-interes-docencia",

@@ -266,6 +266,24 @@ const listarCampus = async (req, res) => {
   }
 };
 
+const listarCampusRegistro = async (req, res) => {
+  try {
+    const campus = await catalogosQueries.listarCampusRegistro();
+
+    res.json({
+      ok: true,
+      message: "Campus de registro obtenidos correctamente",
+      data: campus
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los campus de registro",
+      error: error.message
+    });
+  }
+};
+
 const listarUniversidades = async (req, res) => {
   try {
     const universidades = await catalogosQueries.listarUniversidades();
@@ -336,6 +354,7 @@ module.exports = {
   listarMetodologiasActivas,
   listarPlataformasVirtualesEducativas,
   listarCampus,
+  listarCampusRegistro,
   listarUniversidades,
   listarAreasInteresDocencia,
   listarCursos
