@@ -267,6 +267,7 @@ const resolverIdNumerico = (...valores) => {
 const construirExpedienteEmpleado = async (req, empCod) => {
   const [
     informacionPersonal,
+    autorizacion,
     gradosAcademicos,
     experienciasProfesionales,
     diplomados,
@@ -284,9 +285,11 @@ const construirExpedienteEmpleado = async (req, empCod) => {
     competenciasDigitales,
     metodologiasActivas,
     plataformasVirtuales,
-    preferenciasDocencia
+    preferenciasDocencia,
+    disponibilidadFortalecimiento
   ] = await Promise.all([
     empleadosQueries.obtenerFormularioEmpleado(empCod),
+    empleadosQueries.obtenerAutorizacionEmpleado(empCod),
     empleadosQueries.listarGradosAcademicosEmpleado(empCod),
     empleadosQueries.listarExperienciasProfesionalesEmpleado(empCod),
     empleadosQueries.listarDiplomadosEmpleado(empCod),
@@ -304,7 +307,8 @@ const construirExpedienteEmpleado = async (req, empCod) => {
     empleadosQueries.listarCompetenciasDigitalesEmpleado(empCod),
     empleadosQueries.listarMetodologiasActivasEmpleado(empCod),
     empleadosQueries.listarPlataformasVirtualesEmpleado(empCod),
-    empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod)
+    empleadosQueries.listarPreferenciasDocenciaEmpleado(empCod),
+    empleadosQueries.listarDisponibilidadFortalecimientoEmpleado(empCod)
   ]);
 
   if (!informacionPersonal) {
@@ -378,6 +382,7 @@ const construirExpedienteEmpleado = async (req, empCod) => {
 
   return {
     informacionPersonal,
+    autorizacion: autorizacion || null,
     gradosAcademicos: gradosAcademicos || [],
     experienciasProfesionales: experienciasProfesionales || [],
     diplomados: diplomados || [],
@@ -396,6 +401,13 @@ const construirExpedienteEmpleado = async (req, empCod) => {
     metodologiasActivas: metodologiasActivas || [],
     plataformasVirtuales: plataformasVirtuales || [],
     preferenciasDocencia: preferenciasDocencia || [],
+    disponibilidadFortalecimiento:
+      disponibilidadFortalecimiento || {
+        Vinculacion: [],
+        Investigacion: [],
+        GestionAcademica: [],
+        Registros: []
+      },
     archivos
   };
 };
@@ -3190,6 +3202,145 @@ const eliminarPreferenciaDocencia = async (req, res) => {
   }
 };
 
+const listarDisponibilidadFortalecimiento = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const disponibilidad =
+      await empleadosQueries.listarDisponibilidadFortalecimientoEmpleado(
+        empCod
+      );
+
+    if (!disponibilidad) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Disponibilidad para fortalecimiento obtenida correctamente",
+      data: disponibilidad
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener la disponibilidad para fortalecimiento",
+      error: error.message
+    });
+  }
+};
+
+const guardarDisponibilidadFortalecimiento = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload = req.body || {};
+
+    const disponibilidad =
+      await empleadosQueries.guardarDisponibilidadFortalecimientoEmpleado(
+        empCod,
+        payload
+      );
+
+    if (!disponibilidad) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.status(req.method === "POST" ? 201 : 200).json({
+      ok: true,
+      message: "Disponibilidad para fortalecimiento guardada correctamente",
+      data: disponibilidad
+    });
+  } catch (error) {
+    const status = error.message.includes("no es valida") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al guardar la disponibilidad para fortalecimiento",
+      error: error.message
+    });
+  }
+};
+
+const actualizarAutorizacion = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+    const payload =
+      req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? { ...req.query, ...req.body }
+        : Object.keys(req.query || {}).length > 0
+          ? req.query
+          : req.body;
+
+    const autorizacion = await empleadosQueries.actualizarAutorizacionEmpleado(
+      empCod,
+      payload
+    );
+
+    if (!autorizacion) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Autorizacion actualizada correctamente",
+      data: autorizacion
+    });
+  } catch (error) {
+    const status = error.message.includes("requerida") ? 400 : 500;
+
+    res.status(status).json({
+      ok: false,
+      message: "Error al actualizar la autorizacion",
+      error: error.message
+    });
+  }
+};
+
+const validarAutorizacion = async (req, res) => {
+  try {
+    const { empCod } = req.params;
+
+    const autorizacion = await empleadosQueries.obtenerAutorizacionEmpleado(
+      empCod
+    );
+
+    if (!autorizacion) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    if (autorizacion.Autorizacion !== true) {
+      return res.status(200).json({
+        ok: false,
+        message: "Autorizacion no activa",
+        data: autorizacion
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "ok",
+      data: autorizacion
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al validar la autorizacion",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   obtenerPorCodigo,
   previewArchivoEmpleado,
@@ -3280,5 +3431,9 @@ module.exports = {
   listarPreferenciasDocencia,
   crearPreferenciaDocencia,
   actualizarPreferenciaDocencia,
-  eliminarPreferenciaDocencia
+  eliminarPreferenciaDocencia,
+  listarDisponibilidadFortalecimiento,
+  guardarDisponibilidadFortalecimiento,
+  actualizarAutorizacion,
+  validarAutorizacion
 };

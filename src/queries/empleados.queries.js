@@ -29,6 +29,57 @@ const obtenerCampoPayload = (payload = {}, llaveCamel, llavePascal) => {
   return undefined;
 };
 
+const obtenerValorAutorizacionPayload = (payload = {}) => {
+  if (
+    payload === true ||
+    payload === false ||
+    payload === 1 ||
+    payload === 0 ||
+    payload === "1" ||
+    payload === "0" ||
+    payload === "true" ||
+    payload === "false" ||
+    payload === "TRUE" ||
+    payload === "FALSE"
+  ) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const aliases = [
+    "autorizacion",
+    "Autorizacion",
+    "aceptaAutorizacion",
+    "AceptaAutorizacion",
+    "autorizado",
+    "Autorizado",
+    "valor",
+    "Valor",
+    "value",
+    "Value"
+  ];
+
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(payload, alias)) {
+      return payload[alias];
+    }
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(payload, "data") &&
+    payload.data &&
+    typeof payload.data === "object" &&
+    !Array.isArray(payload.data)
+  ) {
+    return obtenerValorAutorizacionPayload(payload.data);
+  }
+
+  return undefined;
+};
+
 const enriquecerRegistroCurso = (curso = null) => {
   if (!curso) {
     return null;
@@ -332,12 +383,101 @@ const CAMPOS_INFO_PERSONAL_EDITABLES = [
   "CodigoCampus",
   "LugarNacimiento",
   "Nacionalidad",
+  "Autorizacion",
   "Activo",
   "RutaImagenPerfil",
   "RutaHojaVida",
   "RutaDocumentoIdentidad",
   "RutaDocumentoColegiacion"
 ];
+
+const OPCIONES_DISPONIBILIDAD_FORTALECIMIENTO = {
+  Vinculacion: ["Social", "Académica", "Pastoral"],
+  Investigacion: [
+    "Docente investigador",
+    "Editor en revista científica",
+    "Revisor en revista científica",
+    "Miembro del Comité de Ética en investigación en su campus"
+  ],
+  GestionAcademica: [
+    "Diseño y formación de carreras",
+    "Acreditación de carreras"
+  ]
+};
+
+const normalizarTextoComparable = (valor) => {
+  const texto = normalizarTexto(valor);
+
+  if (!texto) {
+    return null;
+  }
+
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+};
+
+const normalizarPayloadDisponibilidadFortalecimiento = (payload = {}) => {
+  const mapaSecciones = {
+    Vinculacion:
+      payload.Vinculacion ?? payload.vinculacion ?? payload.vinculación,
+    Investigacion:
+      payload.Investigacion ?? payload.investigacion ?? payload.investigación,
+    GestionAcademica:
+      payload.GestionAcademica ??
+      payload.gestionAcademica ??
+      payload["gestion-academica"] ??
+      payload["GestiónAcadémica"]
+  };
+
+  const datos = {};
+
+  for (const [seccion, opcionesValidas] of Object.entries(
+    OPCIONES_DISPONIBILIDAD_FORTALECIMIENTO
+  )) {
+    const valores = Array.isArray(mapaSecciones[seccion])
+      ? mapaSecciones[seccion]
+      : [];
+
+    const opcionesMapeadas = new Map(
+      opcionesValidas.map((opcion) => [
+        normalizarTextoComparable(opcion),
+        opcion
+      ])
+    );
+
+    const seleccionadas = [];
+    const vistas = new Set();
+
+    for (const valor of valores) {
+      const clave = normalizarTextoComparable(valor);
+
+      if (!clave) {
+        continue;
+      }
+
+      const opcionCanonical = opcionesMapeadas.get(clave);
+
+      if (!opcionCanonical) {
+        throw new Error(
+          `La opcion '${valor}' no es valida para la seccion ${seccion}`
+        );
+      }
+
+      if (vistas.has(opcionCanonical)) {
+        continue;
+      }
+
+      vistas.add(opcionCanonical);
+      seleccionadas.push(opcionCanonical);
+    }
+
+    datos[seccion] = seleccionadas;
+  }
+
+  return datos;
+};
 
 const obtenerPorCodigo = async (empCod) => {
   const sql = `
@@ -691,6 +831,7 @@ const obtenerEmpleadoNuevoPorCodigo = async (codigoEmpleado) => {
       e.CodigoCampus,
       e.LugarNacimiento,
       e.Nacionalidad,
+      e.Autorizacion,
       e.RutaImagenPerfil,
       e.RutaHojaVida,
       e.RutaDocumentoIdentidad,
@@ -770,6 +911,7 @@ const mapearFormularioInformacionPersonal = (empleado = {}) => {
     Genero: empleado.Genero ?? null,
     LugarNacimiento: empleado.LugarNacimiento ?? null,
     Nacionalidad: empleado.Nacionalidad ?? null,
+    Autorizacion: empleado.Autorizacion ?? null,
     inicializado: Boolean(empleado.inicializado),
     origen: empleado.origen ?? "nuevo"
   };
@@ -899,6 +1041,10 @@ const construirDatosBaseDesdeLegacy = async (empCod, payload = {}) => {
     Nacionalidad: normalizarTexto(
       payload.nacionalidad ?? payload.Nacionalidad
     ),
+    Autorizacion: valorBooleanoNullable(
+      obtenerCampoPayload(payload, "autorizacion", "Autorizacion"),
+      null
+    ),
     RutaImagenPerfil: normalizarTexto(payload.rutaImagenPerfil),
     RutaHojaVida: normalizarTexto(payload.rutaHojaVida),
     RutaDocumentoIdentidad: normalizarTexto(payload.rutaDocumentoIdentidad),
@@ -962,6 +1108,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
     datos.CodigoCampus,
     datos.LugarNacimiento,
     datos.Nacionalidad,
+    datos.Autorizacion,
     datos.RutaImagenPerfil,
     datos.RutaHojaVida,
     datos.RutaDocumentoIdentidad,
@@ -1011,6 +1158,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       CodigoCampus,
       LugarNacimiento,
       Nacionalidad,
+      Autorizacion,
       RutaImagenPerfil,
       RutaHojaVida,
       RutaDocumentoIdentidad,
@@ -1057,6 +1205,7 @@ const guardarInformacionPersonalDesdeLegacy = async (empCod, payload = {}) => {
       CodigoCampus = VALUES(CodigoCampus),
       LugarNacimiento = VALUES(LugarNacimiento),
       Nacionalidad = VALUES(Nacionalidad),
+      Autorizacion = VALUES(Autorizacion),
       RutaImagenPerfil = VALUES(RutaImagenPerfil),
       RutaHojaVida = VALUES(RutaHojaVida),
       RutaDocumentoIdentidad = VALUES(RutaDocumentoIdentidad),
@@ -1216,6 +1365,8 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
     LugarNacimiento: "LugarNacimiento",
     nacionalidad: "Nacionalidad",
     Nacionalidad: "Nacionalidad",
+    autorizacion: "Autorizacion",
+    Autorizacion: "Autorizacion",
     rutaImagenPerfil: "RutaImagenPerfil",
     RutaImagenPerfil: "RutaImagenPerfil",
     rutaHojaVida: "RutaHojaVida",
@@ -1242,7 +1393,7 @@ const normalizarPayloadInformacionPersonal = (payload = {}) => {
       continue;
     }
 
-    if (campoDb === "TieneHijos") {
+    if (campoDb === "TieneHijos" || campoDb === "Autorizacion") {
       datos[campoDb] = valorBooleanoNullable(valor, null);
       continue;
     }
@@ -5550,6 +5701,161 @@ const eliminarPreferenciaDocenciaEmpleado = async (
   return result.affectedRows > 0;
 };
 
+const listarDisponibilidadFortalecimientoEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoDisponibilidadFortalecimiento,
+        CodigoEmpleado,
+        Seccion,
+        Opcion,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoDisponibilidadFortalecimiento
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+      ORDER BY
+        CASE Seccion
+          WHEN 'Vinculacion' THEN 1
+          WHEN 'Investigacion' THEN 2
+          WHEN 'GestionAcademica' THEN 3
+          ELSE 99
+        END,
+        IdEmpleadoDisponibilidadFortalecimiento ASC
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  const agrupado = {
+    Vinculacion: [],
+    Investigacion: [],
+    GestionAcademica: []
+  };
+
+  for (const row of rows) {
+    if (!agrupado[row.Seccion]) {
+      agrupado[row.Seccion] = [];
+    }
+
+    agrupado[row.Seccion].push(row.Opcion);
+  }
+
+  return {
+    CodigoEmpleado: empleado.CodigoEmpleado,
+    IdEmpleado: empleado.IdEmpleado,
+    ...agrupado,
+    Registros: rows
+  };
+};
+
+const guardarDisponibilidadFortalecimientoEmpleado = async (
+  empCod,
+  payload = {}
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const datos = normalizarPayloadDisponibilidadFortalecimiento(payload);
+
+  await query(
+    `
+      UPDATE TB_EmpleadoDisponibilidadFortalecimiento
+      SET Activo = 0
+      WHERE CodigoEmpleado = ?
+        AND Activo = 1
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  for (const [seccion, opciones] of Object.entries(datos)) {
+    for (const opcion of opciones) {
+      await query(
+        `
+          INSERT INTO TB_EmpleadoDisponibilidadFortalecimiento (
+            IdEmpleado,
+            CodigoEmpleado,
+            Seccion,
+            Opcion,
+            Activo
+          ) VALUES (?, ?, ?, ?, 1)
+        `,
+        [empleado.IdEmpleado, empleado.CodigoEmpleado, seccion, opcion]
+      );
+    }
+  }
+
+  return listarDisponibilidadFortalecimientoEmpleado(empCod);
+};
+
+const obtenerAutorizacionEmpleado = async (empCod) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleado,
+        CodigoEmpleado,
+        Autorizacion
+      FROM TB_Empleados
+      WHERE CodigoEmpleado = ?
+      LIMIT 1
+    `,
+    [empleado.CodigoEmpleado]
+  );
+
+  const row = rows[0] || null;
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    IdEmpleado: row.IdEmpleado,
+    CodigoEmpleado: row.CodigoEmpleado,
+    Autorizacion:
+      row.Autorizacion === null ? null : Number(row.Autorizacion) === 1
+  };
+};
+
+const actualizarAutorizacionEmpleado = async (empCod, payload = {}) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return null;
+  }
+
+  const autorizacion = obtenerValorAutorizacionPayload(payload);
+
+  if (autorizacion === undefined) {
+    throw new Error("La autorizacion es requerida");
+  }
+
+  await query(
+    `
+      UPDATE TB_Empleados
+      SET Autorizacion = ?
+      WHERE CodigoEmpleado = ?
+    `,
+    [valorBooleanoNullable(autorizacion, null), empleado.CodigoEmpleado]
+  );
+
+  return obtenerAutorizacionEmpleado(empCod);
+};
+
 module.exports = {
   obtenerPorCodigo,
   listarColaboradores,
@@ -5636,5 +5942,9 @@ module.exports = {
   listarPreferenciasDocenciaEmpleado,
   crearPreferenciaDocenciaEmpleado,
   actualizarPreferenciaDocenciaEmpleado,
-  eliminarPreferenciaDocenciaEmpleado
+  eliminarPreferenciaDocenciaEmpleado,
+  listarDisponibilidadFortalecimientoEmpleado,
+  guardarDisponibilidadFortalecimientoEmpleado,
+  obtenerAutorizacionEmpleado,
+  actualizarAutorizacionEmpleado
 };

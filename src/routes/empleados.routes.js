@@ -339,6 +339,30 @@ router.delete(
   "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia",
   empleadosController.eliminarPreferenciaDocencia
 );
+router.get(
+  "/:empCod/disponibilidad-fortalecimiento",
+  empleadosController.listarDisponibilidadFortalecimiento
+);
+router.get(
+  "/:empCod/autorizacion/validar",
+  empleadosController.validarAutorizacion
+);
+router.patch(
+  "/:empCod/autorizacion",
+  empleadosController.actualizarAutorizacion
+);
+router.post(
+  "/:empCod/disponibilidad-fortalecimiento",
+  empleadosController.guardarDisponibilidadFortalecimiento
+);
+router.patch(
+  "/:empCod/disponibilidad-fortalecimiento",
+  empleadosController.guardarDisponibilidadFortalecimiento
+);
+router.patch(
+  "/:empCod/disponibilidad-fortalecimiento/:idEmpleadoDisponibilidadFortalecimiento",
+  empleadosController.guardarDisponibilidadFortalecimiento
+);
 router.get("/:empCod", empleadosController.obtenerPorCodigo);
 
 module.exports = router;
