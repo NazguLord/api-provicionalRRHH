@@ -274,6 +274,10 @@ const normalizarListaAsignaturas = (payload = {}) => {
   const entrada =
     payload.asignaturas ??
     payload.Asignaturas ??
+    payload.clases ??
+    payload.Clases ??
+    payload.clasesJson ??
+    payload.ClasesJson ??
     payload.asignaturasJson ??
     payload.AsignaturasJson ??
     [];
@@ -301,7 +305,28 @@ const normalizarListaAsignaturas = (payload = {}) => {
   }
 
   return lista
-    .map((item) => normalizarTexto(item))
+    .map((item) => {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        return normalizarTexto(
+          item.nombreAsignaturaPreferenciaDocente ??
+            item.NombreAsignaturaPreferenciaDocente ??
+            item.nombreAsignatura ??
+            item.NombreAsignatura ??
+            item.asignatura ??
+            item.Asignatura ??
+            item.nombre ??
+            item.Nombre ??
+            item.label ??
+            item.Label ??
+            item.value ??
+            item.Value ??
+            item.text ??
+            item.Text
+        );
+      }
+
+      return normalizarTexto(item);
+    })
     .filter(Boolean);
 };
 
@@ -2322,6 +2347,27 @@ const listarAsignaturasExperienciaDocente = async (idEmpleadoExperienciaDocente)
   return query(sql, [idEmpleadoExperienciaDocente]);
 };
 
+const listarAsignaturasPreferenciaDocencia = async (
+  idEmpleadoPreferenciaDocencia
+) => {
+  const sql = `
+    SELECT
+      IdEmpleadoPreferenciaDocenciaAsignatura,
+      IdEmpleadoPreferenciaDocencia,
+      NombreAsignaturaPreferenciaDocente,
+      IdCampus,
+      Activo,
+      FechaCreacion,
+      FechaActualizacion
+    FROM TB_EmpleadoPreferenciaDocenciaAsignatura
+    WHERE IdEmpleadoPreferenciaDocencia = ?
+      AND Activo = 1
+    ORDER BY IdEmpleadoPreferenciaDocenciaAsignatura ASC
+  `;
+
+  return query(sql, [idEmpleadoPreferenciaDocencia]);
+};
+
 const reemplazarAsignaturasExperienciaDocente = async (
   idEmpleadoExperienciaDocente,
   asignaturas = []
@@ -2347,6 +2393,64 @@ const reemplazarAsignaturasExperienciaDocente = async (
       [idEmpleadoExperienciaDocente, asignatura]
     );
   }
+};
+
+const reemplazarAsignaturasPreferenciaDocencia = async (
+  idEmpleadoPreferenciaDocencia,
+  idCampus,
+  asignaturas = []
+) => {
+  await query(
+    `
+      UPDATE TB_EmpleadoPreferenciaDocenciaAsignatura
+      SET Activo = 0
+      WHERE IdEmpleadoPreferenciaDocencia = ?
+    `,
+    [idEmpleadoPreferenciaDocencia]
+  );
+
+  for (const asignatura of asignaturas) {
+    await query(
+      `
+        INSERT INTO TB_EmpleadoPreferenciaDocenciaAsignatura (
+          IdEmpleadoPreferenciaDocencia,
+          NombreAsignaturaPreferenciaDocente,
+          IdCampus,
+          Activo
+        ) VALUES (?, ?, ?, 1)
+      `,
+      [idEmpleadoPreferenciaDocencia, asignatura, idCampus]
+    );
+  }
+};
+
+const obtenerPreferenciaDocenciaActivaEmpleado = async (
+  empCod,
+  idEmpleadoPreferenciaDocencia
+) => {
+  const empleado = await asegurarEmpleadoInicializado(empCod);
+
+  if (!empleado) {
+    return { empleado: null, preferencia: null };
+  }
+
+  const rows = await query(
+    `
+      SELECT
+        *
+      FROM TB_EmpleadoPreferenciaDocencia
+      WHERE IdEmpleadoPreferenciaDocencia = ?
+        AND CodigoEmpleado = ?
+        AND Activo = 1
+      LIMIT 1
+    `,
+    [idEmpleadoPreferenciaDocencia, empleado.CodigoEmpleado]
+  );
+
+  return {
+    empleado,
+    preferencia: rows[0] || null
+  };
 };
 
 const listarExperienciasDocentesEmpleado = async (empCod) => {
@@ -4673,6 +4777,51 @@ const obtenerMetodologiaActivaPorId = async (idMetodologiaActiva) => {
   return rows[0] || null;
 };
 
+const resolverNombreMetodologiaActiva = async (
+  payload = {},
+  valorActual = undefined
+) => {
+  const nombreDirecto = obtenerCampoPayload(
+    payload,
+    "nombreMetodologiaActiva",
+    "NombreMetodologiaActiva"
+  );
+
+  if (nombreDirecto !== undefined) {
+    return normalizarTexto(nombreDirecto);
+  }
+
+  const metodologiaDirecta = obtenerCampoPayload(
+    payload,
+    "metodologiaActiva",
+    "MetodologiaActiva"
+  );
+
+  if (metodologiaDirecta !== undefined) {
+    return normalizarTexto(metodologiaDirecta);
+  }
+
+  const idMetodologiaActiva = obtenerCampoPayload(
+    payload,
+    "idMetodologiaActiva",
+    "IdMetodologiaActiva"
+  );
+
+  if (idMetodologiaActiva !== undefined) {
+    const metodologiaActiva = await obtenerMetodologiaActivaPorId(
+      idMetodologiaActiva
+    );
+
+    if (!metodologiaActiva) {
+      throw new Error("La metodologia activa seleccionada no existe");
+    }
+
+    return normalizarTexto(metodologiaActiva.NombreMetodologiaActiva);
+  }
+
+  return valorActual;
+};
+
 const obtenerPlataformaVirtualPorId = async (idPlataformaVirtualEducativa) => {
   if (!idPlataformaVirtualEducativa) {
     return null;
@@ -4693,6 +4842,53 @@ const obtenerPlataformaVirtualPorId = async (idPlataformaVirtualEducativa) => {
   return rows[0] || null;
 };
 
+const resolverNombrePlataformaVirtualEducativa = async (
+  payload = {},
+  valorActual = undefined
+) => {
+  const nombreDirecto = obtenerCampoPayload(
+    payload,
+    "nombrePlataformaVirtualEducativa",
+    "NombrePlataformaVirtualEducativa"
+  );
+
+  if (nombreDirecto !== undefined) {
+    return normalizarTexto(nombreDirecto);
+  }
+
+  const plataformaVirtualDirecta = obtenerCampoPayload(
+    payload,
+    "plataformaVirtualEducativa",
+    "PlataformaVirtualEducativa"
+  );
+
+  if (plataformaVirtualDirecta !== undefined) {
+    return normalizarTexto(plataformaVirtualDirecta);
+  }
+
+  const idPlataformaVirtualEducativa = obtenerCampoPayload(
+    payload,
+    "idPlataformaVirtualEducativa",
+    "IdPlataformaVirtualEducativa"
+  );
+
+  if (idPlataformaVirtualEducativa !== undefined) {
+    const plataformaVirtual = await obtenerPlataformaVirtualPorId(
+      idPlataformaVirtualEducativa
+    );
+
+    if (!plataformaVirtual) {
+      throw new Error("La plataforma virtual seleccionada no existe");
+    }
+
+    return normalizarTexto(
+      plataformaVirtual.NombrePlataformaVirtualEducativa
+    );
+  }
+
+  return valorActual;
+};
+
 const obtenerAreaInteresDocenciaPorId = async (idAreaInteresDocencia) => {
   if (!idAreaInteresDocencia) {
     return null;
@@ -4711,6 +4907,53 @@ const obtenerAreaInteresDocenciaPorId = async (idAreaInteresDocencia) => {
   );
 
   return rows[0] || null;
+};
+
+const resolverNombreAreaInteresDocencia = async (
+  payload = {},
+  valorActual = undefined
+) => {
+  const nombreDirecto = obtenerCampoPayload(
+    payload,
+    "nombreAreaInteresDocencia",
+    "NombreAreaInteresDocencia"
+  );
+
+  if (nombreDirecto !== undefined) {
+    return normalizarTexto(nombreDirecto);
+  }
+
+  const areaInteresDirecta = obtenerCampoPayload(
+    payload,
+    "areaInteresDocencia",
+    "AreaInteresDocencia"
+  );
+
+  if (areaInteresDirecta !== undefined) {
+    return normalizarTexto(areaInteresDirecta);
+  }
+
+  const idAreaInteresDocencia = obtenerCampoPayload(
+    payload,
+    "idAreaInteresDocencia",
+    "IdAreaInteresDocencia"
+  );
+
+  if (idAreaInteresDocencia !== undefined) {
+    const areaInteresDocencia = await obtenerAreaInteresDocenciaPorId(
+      idAreaInteresDocencia
+    );
+
+    if (!areaInteresDocencia) {
+      throw new Error(
+        "El area de interes para docencia seleccionada no existe"
+      );
+    }
+
+    return normalizarTexto(areaInteresDocencia.NombreAreaInteresDocencia);
+  }
+
+  return valorActual;
 };
 
 const listarIdiomasEmpleado = async (empCod) => {
@@ -5108,15 +5351,14 @@ const listarMetodologiasActivasEmpleado = async (empCod) => {
       SELECT
         ema.IdEmpleadoMetodologiaActiva,
         ema.CodigoEmpleado,
-        ema.IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva AS IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva,
         ema.Descripcion,
         ema.Activo,
         ema.FechaCreacion,
         ema.FechaActualizacion,
-        cma.NombreMetodologiaActiva
+        ema.NombreMetodologiaActiva AS MetodologiaActiva
       FROM TB_EmpleadoMetodologiaActiva ema
-      LEFT JOIN TB_CatMetodologiaActiva cma
-        ON cma.IdMetodologiaActiva = ema.IdMetodologiaActiva
       WHERE ema.CodigoEmpleado = ?
         AND ema.Activo = 1
       ORDER BY ema.IdEmpleadoMetodologiaActiva DESC
@@ -5132,13 +5374,11 @@ const crearMetodologiaActivaEmpleado = async (empCod, payload = {}) => {
     return null;
   }
 
-  const idMetodologiaActiva =
-    payload.idMetodologiaActiva ?? payload.IdMetodologiaActiva ?? null;
-  const metodologiaActiva =
-    await obtenerMetodologiaActivaPorId(idMetodologiaActiva);
+  const nombreMetodologiaActiva =
+    await resolverNombreMetodologiaActiva(payload);
 
-  if (idMetodologiaActiva && !metodologiaActiva) {
-    throw new Error("La metodologia activa seleccionada no existe");
+  if (!nombreMetodologiaActiva) {
+    throw new Error("Debe proporcionar el nombre de la metodologia activa");
   }
 
   const result = await query(
@@ -5146,7 +5386,7 @@ const crearMetodologiaActivaEmpleado = async (empCod, payload = {}) => {
       INSERT INTO TB_EmpleadoMetodologiaActiva (
         IdEmpleado,
         CodigoEmpleado,
-        IdMetodologiaActiva,
+        NombreMetodologiaActiva,
         Descripcion,
         Activo
       ) VALUES (?, ?, ?, ?, 1)
@@ -5154,7 +5394,7 @@ const crearMetodologiaActivaEmpleado = async (empCod, payload = {}) => {
     [
       empleado.IdEmpleado,
       empleado.CodigoEmpleado,
-      idMetodologiaActiva,
+      nombreMetodologiaActiva,
       normalizarTexto(payload.descripcion ?? payload.Descripcion)
     ]
   );
@@ -5164,15 +5404,14 @@ const crearMetodologiaActivaEmpleado = async (empCod, payload = {}) => {
       SELECT
         ema.IdEmpleadoMetodologiaActiva,
         ema.CodigoEmpleado,
-        ema.IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva AS IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva,
         ema.Descripcion,
         ema.Activo,
         ema.FechaCreacion,
         ema.FechaActualizacion,
-        cma.NombreMetodologiaActiva
+        ema.NombreMetodologiaActiva AS MetodologiaActiva
       FROM TB_EmpleadoMetodologiaActiva ema
-      LEFT JOIN TB_CatMetodologiaActiva cma
-        ON cma.IdMetodologiaActiva = ema.IdMetodologiaActiva
       WHERE ema.IdEmpleadoMetodologiaActiva = ?
       LIMIT 1
     `,
@@ -5212,28 +5451,26 @@ const actualizarMetodologiaActivaEmpleado = async (
     return null;
   }
 
-  const idMetodologiaActiva =
-    payload.idMetodologiaActiva ??
-    payload.IdMetodologiaActiva ??
-    actual.IdMetodologiaActiva;
-  const metodologiaActiva =
-    await obtenerMetodologiaActivaPorId(idMetodologiaActiva);
+  const nombreMetodologiaActiva = await resolverNombreMetodologiaActiva(
+    payload,
+    actual.NombreMetodologiaActiva
+  );
 
-  if (idMetodologiaActiva && !metodologiaActiva) {
-    throw new Error("La metodologia activa seleccionada no existe");
+  if (!nombreMetodologiaActiva) {
+    throw new Error("Debe proporcionar el nombre de la metodologia activa");
   }
 
   await query(
     `
       UPDATE TB_EmpleadoMetodologiaActiva
       SET
-        IdMetodologiaActiva = ?,
+        NombreMetodologiaActiva = ?,
         Descripcion = ?
       WHERE IdEmpleadoMetodologiaActiva = ?
         AND CodigoEmpleado = ?
     `,
     [
-      idMetodologiaActiva,
+      nombreMetodologiaActiva,
       normalizarTexto(payload.descripcion ?? payload.Descripcion) ||
         actual.Descripcion,
       idEmpleadoMetodologiaActiva,
@@ -5246,15 +5483,14 @@ const actualizarMetodologiaActivaEmpleado = async (
       SELECT
         ema.IdEmpleadoMetodologiaActiva,
         ema.CodigoEmpleado,
-        ema.IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva AS IdMetodologiaActiva,
+        ema.NombreMetodologiaActiva,
         ema.Descripcion,
         ema.Activo,
         ema.FechaCreacion,
         ema.FechaActualizacion,
-        cma.NombreMetodologiaActiva
+        ema.NombreMetodologiaActiva AS MetodologiaActiva
       FROM TB_EmpleadoMetodologiaActiva ema
-      LEFT JOIN TB_CatMetodologiaActiva cma
-        ON cma.IdMetodologiaActiva = ema.IdMetodologiaActiva
       WHERE ema.IdEmpleadoMetodologiaActiva = ?
       LIMIT 1
     `,
@@ -5299,15 +5535,14 @@ const listarPlataformasVirtualesEmpleado = async (empCod) => {
       SELECT
         epv.IdEmpleadoPlataformaVirtual,
         epv.CodigoEmpleado,
-        epv.IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa AS IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa,
         epv.Descripcion,
         epv.Activo,
         epv.FechaCreacion,
         epv.FechaActualizacion,
-        cpve.NombrePlataformaVirtualEducativa
+        epv.NombrePlataformaVirtualEducativa AS PlataformaVirtualEducativa
       FROM TB_EmpleadoPlataformaVirtual epv
-      LEFT JOIN TB_CatPlataformaVirtualEducativa cpve
-        ON cpve.IdPlataformaVirtualEducativa = epv.IdPlataformaVirtualEducativa
       WHERE epv.CodigoEmpleado = ?
         AND epv.Activo = 1
       ORDER BY epv.IdEmpleadoPlataformaVirtual DESC
@@ -5323,24 +5558,25 @@ const crearPlataformaVirtualEmpleado = async (empCod, payload = {}) => {
     return null;
   }
 
-  const idPlataformaVirtualEducativa =
-    payload.idPlataformaVirtualEducativa ??
-    payload.IdPlataformaVirtualEducativa ??
-    null;
-  const plataformaVirtual = await obtenerPlataformaVirtualPorId(
-    idPlataformaVirtualEducativa
-  );
+  const nombrePlataformaVirtualEducativa =
+    await resolverNombrePlataformaVirtualEducativa(payload);
 
-  if (idPlataformaVirtualEducativa && !plataformaVirtual) {
-    throw new Error("La plataforma virtual seleccionada no existe");
+  if (!nombrePlataformaVirtualEducativa) {
+    throw new Error(
+      "Debe proporcionar el nombre de la plataforma virtual educativa"
+    );
   }
+
+  const descripcion = normalizarTexto(
+    payload.descripcion ?? payload.Descripcion
+  );
 
   const result = await query(
     `
       INSERT INTO TB_EmpleadoPlataformaVirtual (
         IdEmpleado,
         CodigoEmpleado,
-        IdPlataformaVirtualEducativa,
+        NombrePlataformaVirtualEducativa,
         Descripcion,
         Activo
       ) VALUES (?, ?, ?, ?, 1)
@@ -5348,8 +5584,8 @@ const crearPlataformaVirtualEmpleado = async (empCod, payload = {}) => {
     [
       empleado.IdEmpleado,
       empleado.CodigoEmpleado,
-      idPlataformaVirtualEducativa,
-      normalizarTexto(payload.descripcion ?? payload.Descripcion)
+      nombrePlataformaVirtualEducativa,
+      descripcion
     ]
   );
 
@@ -5358,15 +5594,14 @@ const crearPlataformaVirtualEmpleado = async (empCod, payload = {}) => {
       SELECT
         epv.IdEmpleadoPlataformaVirtual,
         epv.CodigoEmpleado,
-        epv.IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa AS IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa,
         epv.Descripcion,
         epv.Activo,
         epv.FechaCreacion,
         epv.FechaActualizacion,
-        cpve.NombrePlataformaVirtualEducativa
+        epv.NombrePlataformaVirtualEducativa AS PlataformaVirtualEducativa
       FROM TB_EmpleadoPlataformaVirtual epv
-      LEFT JOIN TB_CatPlataformaVirtualEducativa cpve
-        ON cpve.IdPlataformaVirtualEducativa = epv.IdPlataformaVirtualEducativa
       WHERE epv.IdEmpleadoPlataformaVirtual = ?
       LIMIT 1
     `,
@@ -5406,31 +5641,34 @@ const actualizarPlataformaVirtualEmpleado = async (
     return null;
   }
 
-  const idPlataformaVirtualEducativa =
-    payload.idPlataformaVirtualEducativa ??
-    payload.IdPlataformaVirtualEducativa ??
-    actual.IdPlataformaVirtualEducativa;
-  const plataformaVirtual = await obtenerPlataformaVirtualPorId(
-    idPlataformaVirtualEducativa
-  );
+  const nombrePlataformaVirtualEducativa =
+    await resolverNombrePlataformaVirtualEducativa(
+      payload,
+      actual.NombrePlataformaVirtualEducativa
+    );
 
-  if (idPlataformaVirtualEducativa && !plataformaVirtual) {
-    throw new Error("La plataforma virtual seleccionada no existe");
+  if (!nombrePlataformaVirtualEducativa) {
+    throw new Error(
+      "Debe proporcionar el nombre de la plataforma virtual educativa"
+    );
   }
+
+  const descripcionActualizada = normalizarTexto(
+    payload.descripcion ?? payload.Descripcion
+  );
 
   await query(
     `
       UPDATE TB_EmpleadoPlataformaVirtual
       SET
-        IdPlataformaVirtualEducativa = ?,
+        NombrePlataformaVirtualEducativa = ?,
         Descripcion = ?
       WHERE IdEmpleadoPlataformaVirtual = ?
         AND CodigoEmpleado = ?
     `,
     [
-      idPlataformaVirtualEducativa,
-      normalizarTexto(payload.descripcion ?? payload.Descripcion) ||
-        actual.Descripcion,
+      nombrePlataformaVirtualEducativa,
+      descripcionActualizada || actual.Descripcion,
       idEmpleadoPlataformaVirtual,
       empleado.CodigoEmpleado
     ]
@@ -5441,15 +5679,14 @@ const actualizarPlataformaVirtualEmpleado = async (
       SELECT
         epv.IdEmpleadoPlataformaVirtual,
         epv.CodigoEmpleado,
-        epv.IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa AS IdPlataformaVirtualEducativa,
+        epv.NombrePlataformaVirtualEducativa,
         epv.Descripcion,
         epv.Activo,
         epv.FechaCreacion,
         epv.FechaActualizacion,
-        cpve.NombrePlataformaVirtualEducativa
+        epv.NombrePlataformaVirtualEducativa AS PlataformaVirtualEducativa
       FROM TB_EmpleadoPlataformaVirtual epv
-      LEFT JOIN TB_CatPlataformaVirtualEducativa cpve
-        ON cpve.IdPlataformaVirtualEducativa = epv.IdPlataformaVirtualEducativa
       WHERE epv.IdEmpleadoPlataformaVirtual = ?
       LIMIT 1
     `,
@@ -5489,22 +5726,21 @@ const listarPreferenciasDocenciaEmpleado = async (empCod) => {
     return null;
   }
 
-  return query(
+  const preferencias = await query(
     `
       SELECT
         epd.IdEmpleadoPreferenciaDocencia,
         epd.CodigoEmpleado,
-        epd.IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia,
         epd.ModalidadEnsenanza,
         epd.IdCampus,
         epd.Activo,
         epd.FechaCreacion,
         epd.FechaActualizacion,
-        caid.NombreAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS AreaInteresDocencia,
         c.NombreCampus
       FROM TB_EmpleadoPreferenciaDocencia epd
-      LEFT JOIN TB_CatAreaInteresDocencia caid
-        ON caid.IdAreaInteresDocencia = epd.IdAreaInteresDocencia
       LEFT JOIN TB_CatCampus c
         ON c.IdCampus = epd.IdCampus
       WHERE epd.CodigoEmpleado = ?
@@ -5513,6 +5749,21 @@ const listarPreferenciasDocenciaEmpleado = async (empCod) => {
     `,
     [empleado.CodigoEmpleado]
   );
+
+  const preferenciasConAsignaturas = [];
+
+  for (const preferencia of preferencias) {
+    const asignaturas = await listarAsignaturasPreferenciaDocencia(
+      preferencia.IdEmpleadoPreferenciaDocencia
+    );
+
+    preferenciasConAsignaturas.push({
+      ...preferencia,
+      Asignaturas: asignaturas
+    });
+  }
+
+  return preferenciasConAsignaturas;
 };
 
 const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
@@ -5522,19 +5773,18 @@ const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
     return null;
   }
 
-  const idAreaInteresDocencia =
-    payload.idAreaInteresDocencia ?? payload.IdAreaInteresDocencia ?? null;
+  const nombreAreaInteresDocencia =
+    await resolverNombreAreaInteresDocencia(payload);
+  const asignaturas = normalizarListaAsignaturas(payload);
   const idCampus = payload.idCampus ?? payload.IdCampus ?? null;
   const modalidadEnsenanza = normalizarTexto(
     payload.modalidadEnsenanza ?? payload.ModalidadEnsenanza
   );
 
-  const areaInteresDocencia = await obtenerAreaInteresDocenciaPorId(
-    idAreaInteresDocencia
-  );
-
-  if (idAreaInteresDocencia && !areaInteresDocencia) {
-    throw new Error("El area de interes para docencia seleccionada no existe");
+  if (!nombreAreaInteresDocencia) {
+    throw new Error(
+      "Debe proporcionar el nombre del area de interes para docencia"
+    );
   }
 
   const result = await query(
@@ -5542,7 +5792,7 @@ const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
       INSERT INTO TB_EmpleadoPreferenciaDocencia (
         IdEmpleado,
         CodigoEmpleado,
-        IdAreaInteresDocencia,
+        NombreAreaInteresDocencia,
         ModalidadEnsenanza,
         IdCampus,
         Activo
@@ -5551,10 +5801,16 @@ const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
     [
       empleado.IdEmpleado,
       empleado.CodigoEmpleado,
-      idAreaInteresDocencia,
+      nombreAreaInteresDocencia,
       modalidadEnsenanza,
       idCampus
     ]
+  );
+
+  await reemplazarAsignaturasPreferenciaDocencia(
+    result.insertId,
+    idCampus,
+    asignaturas
   );
 
   const rows = await query(
@@ -5562,17 +5818,16 @@ const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
       SELECT
         epd.IdEmpleadoPreferenciaDocencia,
         epd.CodigoEmpleado,
-        epd.IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia,
         epd.ModalidadEnsenanza,
         epd.IdCampus,
         epd.Activo,
         epd.FechaCreacion,
         epd.FechaActualizacion,
-        caid.NombreAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS AreaInteresDocencia,
         c.NombreCampus
       FROM TB_EmpleadoPreferenciaDocencia epd
-      LEFT JOIN TB_CatAreaInteresDocencia caid
-        ON caid.IdAreaInteresDocencia = epd.IdAreaInteresDocencia
       LEFT JOIN TB_CatCampus c
         ON c.IdCampus = epd.IdCampus
       WHERE epd.IdEmpleadoPreferenciaDocencia = ?
@@ -5581,7 +5836,16 @@ const crearPreferenciaDocenciaEmpleado = async (empCod, payload = {}) => {
     [result.insertId]
   );
 
-  return rows[0] || null;
+  const preferencia = rows[0] || null;
+
+  if (!preferencia) {
+    return null;
+  }
+
+  return {
+    ...preferencia,
+    Asignaturas: await listarAsignaturasPreferenciaDocencia(result.insertId)
+  };
 };
 
 const actualizarPreferenciaDocenciaEmpleado = async (
@@ -5595,55 +5859,43 @@ const actualizarPreferenciaDocenciaEmpleado = async (
     return null;
   }
 
-  const rowsActuales = await query(
-    `
-      SELECT
-        *
-      FROM TB_EmpleadoPreferenciaDocencia
-      WHERE IdEmpleadoPreferenciaDocencia = ?
-        AND CodigoEmpleado = ?
-        AND Activo = 1
-      LIMIT 1
-    `,
-    [idEmpleadoPreferenciaDocencia, empleado.CodigoEmpleado]
+  const { preferencia: actual } = await obtenerPreferenciaDocenciaActivaEmpleado(
+    empCod,
+    idEmpleadoPreferenciaDocencia
   );
-
-  const actual = rowsActuales[0] || null;
 
   if (!actual) {
     return null;
   }
 
-  const idAreaInteresDocencia =
-    payload.idAreaInteresDocencia ??
-    payload.IdAreaInteresDocencia ??
-    actual.IdAreaInteresDocencia;
+  const nombreAreaInteresDocencia = await resolverNombreAreaInteresDocencia(
+    payload,
+    actual.NombreAreaInteresDocencia
+  );
   const idCampus = payload.idCampus ?? payload.IdCampus ?? actual.IdCampus;
   const modalidadEnsenanza =
     normalizarTexto(
       payload.modalidadEnsenanza ?? payload.ModalidadEnsenanza
     ) || actual.ModalidadEnsenanza;
 
-  const areaInteresDocencia = await obtenerAreaInteresDocenciaPorId(
-    idAreaInteresDocencia
-  );
-
-  if (idAreaInteresDocencia && !areaInteresDocencia) {
-    throw new Error("El area de interes para docencia seleccionada no existe");
+  if (!nombreAreaInteresDocencia) {
+    throw new Error(
+      "Debe proporcionar el nombre del area de interes para docencia"
+    );
   }
 
   await query(
     `
       UPDATE TB_EmpleadoPreferenciaDocencia
       SET
-        IdAreaInteresDocencia = ?,
+        NombreAreaInteresDocencia = ?,
         ModalidadEnsenanza = ?,
         IdCampus = ?
       WHERE IdEmpleadoPreferenciaDocencia = ?
         AND CodigoEmpleado = ?
     `,
     [
-      idAreaInteresDocencia,
+      nombreAreaInteresDocencia,
       modalidadEnsenanza,
       idCampus,
       idEmpleadoPreferenciaDocencia,
@@ -5651,22 +5903,34 @@ const actualizarPreferenciaDocenciaEmpleado = async (
     ]
   );
 
+  if (
+    payload.asignaturas !== undefined ||
+    payload.Asignaturas !== undefined ||
+    payload.asignaturasJson !== undefined ||
+    payload.AsignaturasJson !== undefined
+  ) {
+    await reemplazarAsignaturasPreferenciaDocencia(
+      idEmpleadoPreferenciaDocencia,
+      idCampus,
+      normalizarListaAsignaturas(payload)
+    );
+  }
+
   const rows = await query(
     `
       SELECT
         epd.IdEmpleadoPreferenciaDocencia,
         epd.CodigoEmpleado,
-        epd.IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS IdAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia,
         epd.ModalidadEnsenanza,
         epd.IdCampus,
         epd.Activo,
         epd.FechaCreacion,
         epd.FechaActualizacion,
-        caid.NombreAreaInteresDocencia,
+        epd.NombreAreaInteresDocencia AS AreaInteresDocencia,
         c.NombreCampus
       FROM TB_EmpleadoPreferenciaDocencia epd
-      LEFT JOIN TB_CatAreaInteresDocencia caid
-        ON caid.IdAreaInteresDocencia = epd.IdAreaInteresDocencia
       LEFT JOIN TB_CatCampus c
         ON c.IdCampus = epd.IdCampus
       WHERE epd.IdEmpleadoPreferenciaDocencia = ?
@@ -5675,7 +5939,18 @@ const actualizarPreferenciaDocenciaEmpleado = async (
     [idEmpleadoPreferenciaDocencia]
   );
 
-  return rows[0] || null;
+  const preferencia = rows[0] || null;
+
+  if (!preferencia) {
+    return null;
+  }
+
+  return {
+    ...preferencia,
+    Asignaturas: await listarAsignaturasPreferenciaDocencia(
+      idEmpleadoPreferenciaDocencia
+    )
+  };
 };
 
 const eliminarPreferenciaDocenciaEmpleado = async (
@@ -5688,6 +5963,18 @@ const eliminarPreferenciaDocenciaEmpleado = async (
     return null;
   }
 
+  await query(
+    `
+      UPDATE TB_EmpleadoPreferenciaDocenciaAsignatura a
+      INNER JOIN TB_EmpleadoPreferenciaDocencia p
+        ON p.IdEmpleadoPreferenciaDocencia = a.IdEmpleadoPreferenciaDocencia
+      SET a.Activo = 0
+      WHERE p.IdEmpleadoPreferenciaDocencia = ?
+        AND p.CodigoEmpleado = ?
+    `,
+    [idEmpleadoPreferenciaDocencia, empleado.CodigoEmpleado]
+  );
+
   const result = await query(
     `
       UPDATE TB_EmpleadoPreferenciaDocencia
@@ -5699,6 +5986,224 @@ const eliminarPreferenciaDocenciaEmpleado = async (
   );
 
   return result.affectedRows > 0;
+};
+
+const listarAsignaturasPreferenciaDocenciaEmpleado = async (
+  empCod,
+  idEmpleadoPreferenciaDocencia
+) => {
+  const { empleado, preferencia } = await obtenerPreferenciaDocenciaActivaEmpleado(
+    empCod,
+    idEmpleadoPreferenciaDocencia
+  );
+
+  if (!empleado) {
+    return null;
+  }
+
+  if (!preferencia) {
+    return undefined;
+  }
+
+  return listarAsignaturasPreferenciaDocencia(idEmpleadoPreferenciaDocencia);
+};
+
+const crearAsignaturaPreferenciaDocenciaEmpleado = async (
+  empCod,
+  idEmpleadoPreferenciaDocencia,
+  payload = {}
+) => {
+  const { empleado, preferencia } = await obtenerPreferenciaDocenciaActivaEmpleado(
+    empCod,
+    idEmpleadoPreferenciaDocencia
+  );
+
+  if (!empleado) {
+    return null;
+  }
+
+  if (!preferencia) {
+    return undefined;
+  }
+
+  const nombreAsignaturaPreferenciaDocente = normalizarTexto(
+    payload.nombreAsignaturaPreferenciaDocente ??
+      payload.NombreAsignaturaPreferenciaDocente ??
+      payload.nombreAsignatura ??
+      payload.NombreAsignatura ??
+      payload.asignatura ??
+      payload.Asignatura
+  );
+  const idCampus = payload.idCampus ?? payload.IdCampus ?? preferencia.IdCampus;
+
+  if (!nombreAsignaturaPreferenciaDocente) {
+    throw new Error(
+      "Debe proporcionar el nombre de la asignatura de preferencia docente"
+    );
+  }
+
+  const result = await query(
+    `
+      INSERT INTO TB_EmpleadoPreferenciaDocenciaAsignatura (
+        IdEmpleadoPreferenciaDocencia,
+        NombreAsignaturaPreferenciaDocente,
+        IdCampus,
+        Activo
+      ) VALUES (?, ?, ?, 1)
+    `,
+    [idEmpleadoPreferenciaDocencia, nombreAsignaturaPreferenciaDocente, idCampus]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoPreferenciaDocenciaAsignatura,
+        IdEmpleadoPreferenciaDocencia,
+        NombreAsignaturaPreferenciaDocente,
+        IdCampus,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoPreferenciaDocenciaAsignatura
+      WHERE IdEmpleadoPreferenciaDocenciaAsignatura = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  return rows[0] || null;
+};
+
+const actualizarAsignaturaPreferenciaDocenciaEmpleado = async (
+  empCod,
+  idEmpleadoPreferenciaDocencia,
+  idEmpleadoPreferenciaDocenciaAsignatura,
+  payload = {}
+) => {
+  const { empleado, preferencia } = await obtenerPreferenciaDocenciaActivaEmpleado(
+    empCod,
+    idEmpleadoPreferenciaDocencia
+  );
+
+  if (!empleado) {
+    return null;
+  }
+
+  if (!preferencia) {
+    return undefined;
+  }
+
+  const rowsActuales = await query(
+    `
+      SELECT
+        a.*
+      FROM TB_EmpleadoPreferenciaDocenciaAsignatura a
+      INNER JOIN TB_EmpleadoPreferenciaDocencia p
+        ON p.IdEmpleadoPreferenciaDocencia = a.IdEmpleadoPreferenciaDocencia
+      WHERE a.IdEmpleadoPreferenciaDocenciaAsignatura = ?
+        AND a.IdEmpleadoPreferenciaDocencia = ?
+        AND p.CodigoEmpleado = ?
+        AND a.Activo = 1
+        AND p.Activo = 1
+      LIMIT 1
+    `,
+    [
+      idEmpleadoPreferenciaDocenciaAsignatura,
+      idEmpleadoPreferenciaDocencia,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  const actual = rowsActuales[0] || null;
+
+  if (!actual) {
+    return undefined;
+  }
+
+  const nombreAsignaturaPreferenciaDocente =
+    normalizarTexto(
+      payload.nombreAsignaturaPreferenciaDocente ??
+        payload.NombreAsignaturaPreferenciaDocente ??
+        payload.nombreAsignatura ??
+        payload.NombreAsignatura ??
+        payload.asignatura ??
+        payload.Asignatura
+    ) || actual.NombreAsignaturaPreferenciaDocente;
+  const idCampus = payload.idCampus ?? payload.IdCampus ?? actual.IdCampus;
+
+  await query(
+    `
+      UPDATE TB_EmpleadoPreferenciaDocenciaAsignatura
+      SET
+        NombreAsignaturaPreferenciaDocente = ?,
+        IdCampus = ?
+      WHERE IdEmpleadoPreferenciaDocenciaAsignatura = ?
+        AND IdEmpleadoPreferenciaDocencia = ?
+    `,
+    [
+      nombreAsignaturaPreferenciaDocente,
+      idCampus,
+      idEmpleadoPreferenciaDocenciaAsignatura,
+      idEmpleadoPreferenciaDocencia
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT
+        IdEmpleadoPreferenciaDocenciaAsignatura,
+        IdEmpleadoPreferenciaDocencia,
+        NombreAsignaturaPreferenciaDocente,
+        IdCampus,
+        Activo,
+        FechaCreacion,
+        FechaActualizacion
+      FROM TB_EmpleadoPreferenciaDocenciaAsignatura
+      WHERE IdEmpleadoPreferenciaDocenciaAsignatura = ?
+      LIMIT 1
+    `,
+    [idEmpleadoPreferenciaDocenciaAsignatura]
+  );
+
+  return rows[0] || null;
+};
+
+const eliminarAsignaturaPreferenciaDocenciaEmpleado = async (
+  empCod,
+  idEmpleadoPreferenciaDocencia,
+  idEmpleadoPreferenciaDocenciaAsignatura
+) => {
+  const { empleado, preferencia } = await obtenerPreferenciaDocenciaActivaEmpleado(
+    empCod,
+    idEmpleadoPreferenciaDocencia
+  );
+
+  if (!empleado) {
+    return null;
+  }
+
+  if (!preferencia) {
+    return undefined;
+  }
+
+  const result = await query(
+    `
+      UPDATE TB_EmpleadoPreferenciaDocenciaAsignatura a
+      INNER JOIN TB_EmpleadoPreferenciaDocencia p
+        ON p.IdEmpleadoPreferenciaDocencia = a.IdEmpleadoPreferenciaDocencia
+      SET a.Activo = 0
+      WHERE a.IdEmpleadoPreferenciaDocenciaAsignatura = ?
+        AND a.IdEmpleadoPreferenciaDocencia = ?
+        AND p.CodigoEmpleado = ?
+    `,
+    [
+      idEmpleadoPreferenciaDocenciaAsignatura,
+      idEmpleadoPreferenciaDocencia,
+      empleado.CodigoEmpleado
+    ]
+  );
+
+  return result.affectedRows > 0 ? true : undefined;
 };
 
 const listarDisponibilidadFortalecimientoEmpleado = async (empCod) => {
@@ -5943,6 +6448,10 @@ module.exports = {
   crearPreferenciaDocenciaEmpleado,
   actualizarPreferenciaDocenciaEmpleado,
   eliminarPreferenciaDocenciaEmpleado,
+  listarAsignaturasPreferenciaDocenciaEmpleado,
+  crearAsignaturaPreferenciaDocenciaEmpleado,
+  actualizarAsignaturaPreferenciaDocenciaEmpleado,
+  eliminarAsignaturaPreferenciaDocenciaEmpleado,
   listarDisponibilidadFortalecimientoEmpleado,
   guardarDisponibilidadFortalecimientoEmpleado,
   obtenerAutorizacionEmpleado,

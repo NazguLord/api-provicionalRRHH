@@ -340,6 +340,22 @@ router.delete(
   empleadosController.eliminarPreferenciaDocencia
 );
 router.get(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia/asignaturas",
+  empleadosController.listarAsignaturasPreferenciaDocencia
+);
+router.post(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia/asignaturas",
+  empleadosController.crearAsignaturaPreferenciaDocencia
+);
+router.patch(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia/asignaturas/:idEmpleadoPreferenciaDocenciaAsignatura",
+  empleadosController.actualizarAsignaturaPreferenciaDocencia
+);
+router.delete(
+  "/:empCod/preferencias-docencia/:idEmpleadoPreferenciaDocencia/asignaturas/:idEmpleadoPreferenciaDocenciaAsignatura",
+  empleadosController.eliminarAsignaturaPreferenciaDocencia
+);
+router.get(
   "/:empCod/disponibilidad-fortalecimiento",
   empleadosController.listarDisponibilidadFortalecimiento
 );

@@ -3202,6 +3202,171 @@ const eliminarPreferenciaDocencia = async (req, res) => {
   }
 };
 
+const listarAsignaturasPreferenciaDocencia = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPreferenciaDocencia } = req.params;
+
+    const asignaturas =
+      await empleadosQueries.listarAsignaturasPreferenciaDocenciaEmpleado(
+        empCod,
+        Number(idEmpleadoPreferenciaDocencia)
+      );
+
+    if (asignaturas === null) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    if (asignaturas === undefined) {
+      return res.status(404).json({
+        ok: false,
+        message: "Preferencia de docencia no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Asignaturas de preferencia de docencia obtenidas correctamente",
+      data: asignaturas
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener las asignaturas de preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
+const crearAsignaturaPreferenciaDocencia = async (req, res) => {
+  try {
+    const { empCod, idEmpleadoPreferenciaDocencia } = req.params;
+    const payload = req.body || {};
+
+    const asignatura =
+      await empleadosQueries.crearAsignaturaPreferenciaDocenciaEmpleado(
+        empCod,
+        Number(idEmpleadoPreferenciaDocencia),
+        payload
+      );
+
+    if (asignatura === null) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    if (asignatura === undefined) {
+      return res.status(404).json({
+        ok: false,
+        message: "Preferencia de docencia no encontrada"
+      });
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: "Asignatura de preferencia de docencia guardada correctamente",
+      data: asignatura
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al guardar la asignatura de preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
+const actualizarAsignaturaPreferenciaDocencia = async (req, res) => {
+  try {
+    const {
+      empCod,
+      idEmpleadoPreferenciaDocencia,
+      idEmpleadoPreferenciaDocenciaAsignatura
+    } = req.params;
+    const payload = req.body || {};
+
+    const asignatura =
+      await empleadosQueries.actualizarAsignaturaPreferenciaDocenciaEmpleado(
+        empCod,
+        Number(idEmpleadoPreferenciaDocencia),
+        Number(idEmpleadoPreferenciaDocenciaAsignatura),
+        payload
+      );
+
+    if (asignatura === null) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    if (asignatura === undefined) {
+      return res.status(404).json({
+        ok: false,
+        message: "Asignatura de preferencia de docencia no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Asignatura de preferencia de docencia actualizada correctamente",
+      data: asignatura
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar la asignatura de preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
+const eliminarAsignaturaPreferenciaDocencia = async (req, res) => {
+  try {
+    const {
+      empCod,
+      idEmpleadoPreferenciaDocencia,
+      idEmpleadoPreferenciaDocenciaAsignatura
+    } = req.params;
+
+    const eliminado =
+      await empleadosQueries.eliminarAsignaturaPreferenciaDocenciaEmpleado(
+        empCod,
+        Number(idEmpleadoPreferenciaDocencia),
+        Number(idEmpleadoPreferenciaDocenciaAsignatura)
+      );
+
+    if (eliminado === null) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    if (eliminado === undefined) {
+      return res.status(404).json({
+        ok: false,
+        message: "Asignatura de preferencia de docencia no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "Asignatura de preferencia de docencia eliminada correctamente"
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Error al eliminar la asignatura de preferencia de docencia",
+      error: error.message
+    });
+  }
+};
+
 const listarDisponibilidadFortalecimiento = async (req, res) => {
   try {
     const { empCod } = req.params;
@@ -3432,6 +3597,10 @@ module.exports = {
   crearPreferenciaDocencia,
   actualizarPreferenciaDocencia,
   eliminarPreferenciaDocencia,
+  listarAsignaturasPreferenciaDocencia,
+  crearAsignaturaPreferenciaDocencia,
+  actualizarAsignaturaPreferenciaDocencia,
+  eliminarAsignaturaPreferenciaDocencia,
   listarDisponibilidadFortalecimiento,
   guardarDisponibilidadFortalecimiento,
   actualizarAutorizacion,
