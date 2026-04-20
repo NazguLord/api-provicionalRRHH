@@ -529,13 +529,15 @@ const previewArchivoEmpleado = async (req, res) => {
 
 const listarColaboradores = async (req, res) => {
   try {
-    const { page, limit, search, SdeCod, sdeCod } = req.query;
+    const { page, limit, search, SdeCod, sdeCod, IdTipoEmpleado, idTipoEmpleado } =
+      req.query;
 
     const resultado = await empleadosQueries.listarColaboradores({
       page,
       limit,
       search,
-      sdeCod: SdeCod ?? sdeCod ?? null
+      sdeCod: SdeCod ?? sdeCod ?? null,
+      idTipoEmpleado: IdTipoEmpleado ?? idTipoEmpleado ?? null
     });
 
     res.json({

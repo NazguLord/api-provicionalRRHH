@@ -551,9 +551,17 @@ const obtenerPorCodigo = async (empCod) => {
   return rows[0] || null;
 };
 
-const construirWhereColaboradoresCompletos = (search = null, sdeCod = null) => {
+const construirWhereColaboradoresCompletos = (
+  search = null,
+  sdeCod = null,
+  idTipoEmpleado = null
+) => {
   const textoBusqueda = normalizarTexto(search);
   const campusFiltro = normalizarTexto(sdeCod);
+  const tipoEmpleadoFiltro =
+    idTipoEmpleado === undefined || idTipoEmpleado === null || idTipoEmpleado === ""
+      ? null
+      : Number(idTipoEmpleado);
   const where = [
     "e.Activo = 1",
     `(
@@ -591,6 +599,11 @@ const construirWhereColaboradoresCompletos = (search = null, sdeCod = null) => {
     params.push(campusFiltro);
   }
 
+  if (Number.isInteger(tipoEmpleadoFiltro) && tipoEmpleadoFiltro > 0) {
+    where.push("e.IdTipoEmpleado = ?");
+    params.push(tipoEmpleadoFiltro);
+  }
+
   return {
     whereSql: where.join(" AND "),
     params
@@ -601,14 +614,16 @@ const listarColaboradores = async ({
   page = 1,
   limit = 10,
   search = null,
-  sdeCod = null
+  sdeCod = null,
+  idTipoEmpleado = null
 } = {}) => {
   const pageNumber = Number(page) > 0 ? Number(page) : 1;
   const limitNumber = Number(limit) > 0 ? Number(limit) : 10;
   const offset = (pageNumber - 1) * limitNumber;
   const { whereSql, params } = construirWhereColaboradoresCompletos(
     search,
-    sdeCod
+    sdeCod,
+    idTipoEmpleado
   );
 
   const sqlDatos = `
@@ -2329,6 +2344,51 @@ const obtenerNivelExperienciaDocentePorId = async (idNivelExperienciaDocente) =>
   return rows[0] || null;
 };
 
+const resolverNombreNivelExperienciaDocente = async (
+  payload = {},
+  valorActual = undefined
+) => {
+  const nombreDirecto = obtenerCampoPayload(
+    payload,
+    "nombreNivelExperienciaDocente",
+    "NombreNivelExperienciaDocente"
+  );
+
+  if (nombreDirecto !== undefined) {
+    return normalizarTexto(nombreDirecto);
+  }
+
+  const nivelDirecto = obtenerCampoPayload(
+    payload,
+    "nivelExperienciaDocente",
+    "NivelExperienciaDocente"
+  );
+
+  if (nivelDirecto !== undefined) {
+    return normalizarTexto(nivelDirecto);
+  }
+
+  const idNivelExperienciaDocente = obtenerCampoPayload(
+    payload,
+    "idNivelExperienciaDocente",
+    "IdNivelExperienciaDocente"
+  );
+
+  if (idNivelExperienciaDocente !== undefined) {
+    const nivel = await obtenerNivelExperienciaDocentePorId(
+      idNivelExperienciaDocente
+    );
+
+    if (!nivel) {
+      throw new Error("El nivel de experiencia docente seleccionado no existe");
+    }
+
+    return normalizarTexto(nivel.NombreNivelExperienciaDocente);
+  }
+
+  return valorActual;
+};
+
 const listarAsignaturasExperienciaDocente = async (idEmpleadoExperienciaDocente) => {
   const sql = `
     SELECT
@@ -2465,15 +2525,14 @@ const listarExperienciasDocentesEmpleado = async (empCod) => {
       SELECT
         eed.IdEmpleadoExperienciaDocente,
         eed.CodigoEmpleado,
-        eed.IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente AS IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente,
         eed.AniosExperiencia,
         eed.Activo,
         eed.FechaCreacion,
         eed.FechaActualizacion,
-        cned.NombreNivelExperienciaDocente
+        eed.NombreNivelExperienciaDocente AS NivelExperienciaDocente
       FROM TB_EmpleadoExperienciaDocente eed
-      LEFT JOIN TB_CatNivelExperienciaDocente cned
-        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
       WHERE eed.CodigoEmpleado = ?
         AND eed.Activo = 1
       ORDER BY eed.IdEmpleadoExperienciaDocente DESC
@@ -2504,18 +2563,17 @@ const crearExperienciaDocenteEmpleado = async (empCod, payload = {}) => {
     return null;
   }
 
-  const idNivelExperienciaDocente =
-    payload.idNivelExperienciaDocente ??
-    payload.IdNivelExperienciaDocente ??
-    null;
-  const nivel = await obtenerNivelExperienciaDocentePorId(
-    idNivelExperienciaDocente
-  );
+  const nombreNivelExperienciaDocente =
+    await resolverNombreNivelExperienciaDocente(payload);
 
-  if (idNivelExperienciaDocente && !nivel) {
-    throw new Error("El nivel de experiencia docente seleccionado no existe");
+  if (!nombreNivelExperienciaDocente) {
+    throw new Error(
+      "Debe proporcionar el nombre del nivel de experiencia docente"
+    );
   }
 
+  const aniosExperiencia =
+    payload.aniosExperiencia ?? payload.AniosExperiencia ?? null;
   const asignaturas = normalizarListaAsignaturas(payload);
 
   const result = await query(
@@ -2523,7 +2581,7 @@ const crearExperienciaDocenteEmpleado = async (empCod, payload = {}) => {
       INSERT INTO TB_EmpleadoExperienciaDocente (
         IdEmpleado,
         CodigoEmpleado,
-        IdNivelExperienciaDocente,
+        NombreNivelExperienciaDocente,
         AniosExperiencia,
         Activo
       ) VALUES (?, ?, ?, ?, 1)
@@ -2531,8 +2589,8 @@ const crearExperienciaDocenteEmpleado = async (empCod, payload = {}) => {
     [
       empleado.IdEmpleado,
       empleado.CodigoEmpleado,
-      idNivelExperienciaDocente,
-      payload.aniosExperiencia ?? payload.AniosExperiencia ?? null
+      nombreNivelExperienciaDocente,
+      aniosExperiencia
     ]
   );
 
@@ -2543,15 +2601,14 @@ const crearExperienciaDocenteEmpleado = async (empCod, payload = {}) => {
       SELECT
         eed.IdEmpleadoExperienciaDocente,
         eed.CodigoEmpleado,
-        eed.IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente AS IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente,
         eed.AniosExperiencia,
         eed.Activo,
         eed.FechaCreacion,
         eed.FechaActualizacion,
-        cned.NombreNivelExperienciaDocente
+        eed.NombreNivelExperienciaDocente AS NivelExperienciaDocente
       FROM TB_EmpleadoExperienciaDocente eed
-      LEFT JOIN TB_CatNivelExperienciaDocente cned
-        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
       WHERE eed.IdEmpleadoExperienciaDocente = ?
       LIMIT 1
     `,
@@ -2600,29 +2657,29 @@ const actualizarExperienciaDocenteEmpleado = async (
     return null;
   }
 
-  const idNivelExperienciaDocente =
-    payload.idNivelExperienciaDocente ??
-    payload.IdNivelExperienciaDocente ??
-    actual.IdNivelExperienciaDocente;
-  const nivel = await obtenerNivelExperienciaDocentePorId(
-    idNivelExperienciaDocente
-  );
+  const nombreNivelExperienciaDocente =
+    await resolverNombreNivelExperienciaDocente(
+      payload,
+      actual.NombreNivelExperienciaDocente
+    );
 
-  if (idNivelExperienciaDocente && !nivel) {
-    throw new Error("El nivel de experiencia docente seleccionado no existe");
+  if (!nombreNivelExperienciaDocente) {
+    throw new Error(
+      "Debe proporcionar el nombre del nivel de experiencia docente"
+    );
   }
 
   await query(
     `
       UPDATE TB_EmpleadoExperienciaDocente
       SET
-        IdNivelExperienciaDocente = ?,
+        NombreNivelExperienciaDocente = ?,
         AniosExperiencia = ?
       WHERE IdEmpleadoExperienciaDocente = ?
         AND CodigoEmpleado = ?
     `,
     [
-      idNivelExperienciaDocente,
+      nombreNivelExperienciaDocente,
       payload.aniosExperiencia ??
         payload.AniosExperiencia ??
         actual.AniosExperiencia,
@@ -2633,7 +2690,11 @@ const actualizarExperienciaDocenteEmpleado = async (
 
   if (
     payload.asignaturas !== undefined ||
+    payload.clases !== undefined ||
     payload.Asignaturas !== undefined ||
+    payload.Clases !== undefined ||
+    payload.clasesJson !== undefined ||
+    payload.ClasesJson !== undefined ||
     payload.asignaturasJson !== undefined ||
     payload.AsignaturasJson !== undefined
   ) {
@@ -2648,15 +2709,14 @@ const actualizarExperienciaDocenteEmpleado = async (
       SELECT
         eed.IdEmpleadoExperienciaDocente,
         eed.CodigoEmpleado,
-        eed.IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente AS IdNivelExperienciaDocente,
+        eed.NombreNivelExperienciaDocente,
         eed.AniosExperiencia,
         eed.Activo,
         eed.FechaCreacion,
         eed.FechaActualizacion,
-        cned.NombreNivelExperienciaDocente
+        eed.NombreNivelExperienciaDocente AS NivelExperienciaDocente
       FROM TB_EmpleadoExperienciaDocente eed
-      LEFT JOIN TB_CatNivelExperienciaDocente cned
-        ON cned.IdNivelExperienciaDocente = eed.IdNivelExperienciaDocente
       WHERE eed.IdEmpleadoExperienciaDocente = ?
       LIMIT 1
     `,
