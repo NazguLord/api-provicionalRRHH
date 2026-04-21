@@ -213,6 +213,20 @@ const normalizarTipoEmpleado = (tipoEmpleado) => {
   return normalizarTexto(tipoEmpleado)?.toUpperCase() || null;
 };
 
+const normalizarIdsTipoEmpleadoFiltro = (idTipoEmpleado) => {
+  const valores = Array.isArray(idTipoEmpleado)
+    ? idTipoEmpleado
+    : [idTipoEmpleado];
+
+  return [
+    ...new Set(
+      valores
+        .map((valor) => Number(valor))
+        .filter((valor) => Number.isInteger(valor) && valor > 0)
+    )
+  ];
+};
+
 const CONDICION_ACTUALIZACION_ADMINISTRATIVO = `
   EXISTS (
     SELECT 1
@@ -558,10 +572,7 @@ const construirWhereColaboradoresCompletos = (
 ) => {
   const textoBusqueda = normalizarTexto(search);
   const campusFiltro = normalizarTexto(sdeCod);
-  const tipoEmpleadoFiltro =
-    idTipoEmpleado === undefined || idTipoEmpleado === null || idTipoEmpleado === ""
-      ? null
-      : Number(idTipoEmpleado);
+  const tiposEmpleadoFiltro = normalizarIdsTipoEmpleadoFiltro(idTipoEmpleado);
   const where = [
     "e.Activo = 1",
     `(
@@ -599,9 +610,11 @@ const construirWhereColaboradoresCompletos = (
     params.push(campusFiltro);
   }
 
-  if (Number.isInteger(tipoEmpleadoFiltro) && tipoEmpleadoFiltro > 0) {
-    where.push("e.IdTipoEmpleado = ?");
-    params.push(tipoEmpleadoFiltro);
+  if (tiposEmpleadoFiltro.length > 0) {
+    where.push(
+      `e.IdTipoEmpleado IN (${tiposEmpleadoFiltro.map(() => "?").join(", ")})`
+    );
+    params.push(...tiposEmpleadoFiltro);
   }
 
   return {
@@ -2549,7 +2562,9 @@ const listarExperienciasDocentesEmpleado = async (empCod) => {
 
     experienciasConAsignaturas.push({
       ...experiencia,
-      Asignaturas: asignaturas
+      Asignaturas: asignaturas,
+      asignaturas,
+      clases: asignaturas
     });
   }
 
@@ -5819,7 +5834,8 @@ const listarPreferenciasDocenciaEmpleado = async (empCod) => {
 
     preferenciasConAsignaturas.push({
       ...preferencia,
-      Asignaturas: asignaturas
+      Asignaturas: asignaturas,
+      asignaturas
     });
   }
 
