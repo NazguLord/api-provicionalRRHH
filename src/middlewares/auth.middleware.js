@@ -1,7 +1,37 @@
 const { verificarToken } = require("../utils/jwt");
+const { obtenerApiKeySistema } = require("../queries/api-keys.queries");
+const { compararApiKeyConHash } = require("../utils/api-key");
 
-const validarTokenBearer = (authorization = "", headers = {}) => {
-  const expectedToken = String(process.env.AUTH_TOKEN || "").trim();
+const obtenerTokenApiSistema = async () => {
+  const sistema = String(
+    process.env.AUTH_TOKEN_SISTEMA ||
+      process.env.API_KEY_SISTEMA ||
+      "api-provicionalRRHH"
+  ).trim();
+
+  if (!sistema) {
+    const error = new Error("AUTH_TOKEN_SISTEMA no esta configurado en el servidor");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const apiKeySistema = await obtenerApiKeySistema(sistema);
+
+  if (!apiKeySistema?.api_key) {
+    const error = new Error(
+      `No hay api_key activa configurada para el sistema ${sistema}`
+    );
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return {
+    sistema: apiKeySistema.sistema,
+    hash: String(apiKeySistema.api_key).trim()
+  };
+};
+
+const validarTokenBearer = async (authorization = "", headers = {}) => {
 
   if (!authorization.startsWith("Bearer ")) {
     const error = new Error("No autorizado. Debes enviar un token Bearer.");
@@ -30,13 +60,17 @@ const validarTokenBearer = (authorization = "", headers = {}) => {
     }
   }
 
-  if (!expectedToken) {
-    const error = new Error("AUTH_TOKEN no esta configurado en el servidor");
+  const expectedToken = await obtenerTokenApiSistema();
+
+  if (!expectedToken.hash) {
+    const error = new Error(
+      "api_key activa esta vacia en uch-registro.apiKeySistemas"
+    );
     error.statusCode = 500;
     throw error;
   }
 
-  if (token !== expectedToken) {
+  if (!compararApiKeyConHash(token, expectedToken.hash)) {
     const error = new Error("Token invalido");
     error.statusCode = 401;
     throw error;
@@ -52,13 +86,13 @@ const validarTokenBearer = (authorization = "", headers = {}) => {
       String(headers["x-auth-name"] || headers["x-user-display-name"] || "").trim() ||
       null,
     email: String(headers["x-auth-email"] || "").trim() || null,
-    tokenLabel: "token_estatico"
+    tokenLabel: expectedToken.sistema
   };
 };
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
-    req.user = validarTokenBearer(req.headers.authorization || "", req.headers);
+    req.user = await validarTokenBearer(req.headers.authorization || "", req.headers);
     next();
   } catch (error) {
     return res.status(error.statusCode || 500).json({
