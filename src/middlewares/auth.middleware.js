@@ -32,7 +32,6 @@ const obtenerTokenApiSistema = async () => {
 };
 
 const validarTokenBearer = async (authorization = "", headers = {}) => {
-
   if (!authorization.startsWith("Bearer ")) {
     const error = new Error("No autorizado. Debes enviar un token Bearer.");
     error.statusCode = 401;
@@ -70,7 +69,11 @@ const validarTokenBearer = async (authorization = "", headers = {}) => {
     throw error;
   }
 
-  if (!compararApiKeyConHash(token, expectedToken.hash)) {
+  const coincide = await compararApiKeyConHash(token, expectedToken.hash);
+  //console.log("Sistema:", expectedToken.sistema);
+  //console.log("Coincide:", coincide);
+
+  if (!coincide) {
     const error = new Error("Token invalido");
     error.statusCode = 401;
     throw error;
@@ -92,6 +95,7 @@ const validarTokenBearer = async (authorization = "", headers = {}) => {
 
 const authMiddleware = async (req, res, next) => {
   try {
+   // console.log("Authorization recibido:", req.headers.authorization);
     req.user = await validarTokenBearer(req.headers.authorization || "", req.headers);
     next();
   } catch (error) {

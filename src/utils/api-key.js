@@ -1,21 +1,15 @@
-const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 
-const generarHashApiKey = (apiKey) => {
-  return crypto.createHash("sha256").update(String(apiKey)).digest("hex");
+const generarHashApiKey = async (apiKey) => {
+  return await bcrypt.hash(String(apiKey), 10);
 };
 
-const compararApiKeyConHash = (apiKey, hashGuardado) => {
-  const hashCalculado = generarHashApiKey(apiKey);
-  const hashNormalizado = String(hashGuardado || "").trim().toLowerCase();
+const compararApiKeyConHash = async (apiKey, hashGuardado) => {
+  const hash = String(hashGuardado || "").trim();
 
-  if (!/^[a-f0-9]{64}$/.test(hashNormalizado)) {
-    return false;
-  }
+  if (!hash) return false;
 
-  return crypto.timingSafeEqual(
-    Buffer.from(hashCalculado, "hex"),
-    Buffer.from(hashNormalizado, "hex")
-  );
+  return await bcrypt.compare(String(apiKey), hash);
 };
 
 module.exports = {
