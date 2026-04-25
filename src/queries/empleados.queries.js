@@ -669,8 +669,8 @@ const listarColaboradores = async ({
       ON c.SdeCod = e.CodigoCampus
     WHERE ${whereSql}
     ORDER BY e.FechaActualizacion DESC, NombreCompleto ASC
-    LIMIT ?
-    OFFSET ?
+    LIMIT ${limitNumber}
+    OFFSET ${offset}
   `;
 
   const sqlTotal = `
@@ -680,7 +680,8 @@ const listarColaboradores = async ({
   `;
 
   const [data, totalRows] = await Promise.all([
-    query(sqlDatos, [...params, limitNumber, offset]),
+   // query(sqlDatos, [...params, limitNumber, offset]),
+    query(sqlDatos, params),
     query(sqlTotal, params)
   ]);
 
